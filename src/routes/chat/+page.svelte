@@ -32,7 +32,20 @@
 			scrollToBottom();
 		});
 
-		return () => sseClient.close();
+		const socket = new WebSocket(`/chat/websocket`);
+
+		socket.addEventListener('open', () => {
+			socket.send('Hello Server!');
+		});
+
+		socket.addEventListener('message', (event) => {
+			console.log('Message from server ', event.data);
+		});
+
+		return () => {
+			sseClient.close();
+			socket.close();
+		};
 	});
 
 	function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
