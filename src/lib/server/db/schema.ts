@@ -1,3 +1,4 @@
+import { relations } from 'drizzle-orm';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const user = sqliteTable('user', {
@@ -15,6 +16,36 @@ export const session = sqliteTable('session', {
 	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
 });
 
+export const message = sqliteTable('message', {
+	id: text('id').primaryKey(),
+	userId: text('user_id')
+		.notNull()
+		.references(() => user.id),
+	content: text('content').notNull(),
+	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+});
+
 export type Session = typeof session.$inferSelect;
 
 export type User = typeof user.$inferSelect;
+
+export type Message = typeof message.$inferSelect;
+
+export const userRelations = relations(user, ({ many }) => ({
+	sessions: many(session),
+	messages: many(message)
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+	user: one(user, {
+		fields: [session.userId],
+		references: [user.id]
+	})
+}));
+
+export const messageRelations = relations(message, ({ one }) => ({
+	user: one(user, {
+		fields: [message.userId],
+		references: [user.id]
+	})
+}));
