@@ -1,6 +1,7 @@
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import { broadcastEvent } from '$lib/server/sse';
 import { error, redirect } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 
@@ -8,9 +9,11 @@ export async function load() {
 	const user = requireLogin();
 
 	const messages = await db.query.message.findMany({
-		orderBy: (message, { desc }) => [desc(message.createdAt)],
+		orderBy: (message, { asc }) => [asc(message.createdAt)],
 		with: {
-			user: true
+			user: {
+				columns: { username: true }
+			}
 		}
 	});
 
@@ -26,20 +29,21 @@ export const actions = {
 
 		if (!content) error(400, 'Message content cannot be empty');
 
-		await db.insert(table.message).values({
+		const message = {
 			id: randomUUID(),
 			userId: user.id,
 			content,
 			createdAt: new Date()
-		});
+		};
+		await db.insert(table.message).values(message);
+
+		broadcastEvent('message', { ...message, user: { username: user.username } });
 	}
 };
 function requireLogin() {
 	const { locals } = getRequestEvent();
 
-	if (!locals.user) {
-		return redirect(302, '/demo/lucia/login');
-	}
+	if (!locals.user) redirect(302, '/demo/lucia/login');
 
 	return locals.user;
 }
