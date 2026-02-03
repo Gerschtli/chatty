@@ -17,3 +17,5 @@ export const events = {
 export type Events = {
 	[K in keyof typeof events]: z.infer<(typeof events)[K]>;
 };
+
+export type Message = Events['message'];

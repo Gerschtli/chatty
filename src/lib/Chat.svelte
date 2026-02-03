@@ -1,68 +1,33 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { SseClient } from '$lib/sse';
 	import { onMount } from 'svelte';
 
-	let { data } = $props();
+	let { isConnected, messages, userId } = $props();
 
 	let scrollContainer: HTMLElement | null = null;
-	let messages = $state<
-		{
-			id: string;
-			userId: string;
-			content: string;
-			createdAt: Date | string;
-			user: {
-				username: string;
-			};
-		}[]
-	>([]);
 
-	onMount(() => {
-		messages = data.messages.slice();
+	onMount(() => scrollToBottom('instant'));
 
-		scrollToBottom('instant');
-
-		const sseClient = new SseClient('/chat/api', (err) => {
-			console.error('SSE error:', err);
-		});
-
-		sseClient.addHandler('message', async (payload) => {
-			messages.push(payload);
-			scrollToBottom();
-		});
-
-		const socket = new WebSocket(`/chat/websocket`);
-
-		socket.addEventListener('open', () => {
-			socket.send('Hello Server!');
-		});
-
-		socket.addEventListener('message', (event) => {
-			console.log('Message from server ', event.data);
-		});
-
-		return () => {
-			sseClient.close();
-			socket.close();
-		};
+	$effect(() => {
+		messages.length;
+		scrollToBottom();
 	});
 
 	function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
 		setTimeout(() => scrollContainer?.scrollTo({ top: scrollContainer.scrollHeight, behavior }), 0);
 	}
 
-	function formatTime(created: string | Date) {
-		const d = typeof created === 'string' ? new Date(created) : created;
-
-		return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+	function formatTime(created: Date) {
+		return created.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 	}
 </script>
+
+<pre>{JSON.stringify(isConnected, null, 2)}</pre>
 
 <div class="m-4 flex h-100 flex-col justify-between rounded-lg border-2 border-slate-400">
 	<div bind:this={scrollContainer} class="overflow-auto p-4">
 		{#each messages as message (message.id)}
-			<div class="chat {message.userId === data.userId ? 'chat-end' : 'chat-start'}">
+			<div class="chat {message.userId === userId ? 'chat-end' : 'chat-start'}">
 				<div class="avatar chat-image">
 					<div class="w-10 rounded-full">
 						<img

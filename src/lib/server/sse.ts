@@ -35,11 +35,7 @@ export function broadcastEvent<T extends keyof Events>(event: T, data: Events[T]
 }
 
 // Send a lightweight ping to keep connections alive when idle
-setInterval(() => {
-	for (const subsciber of subscribers.values()) {
-		safeEnqueue(subsciber, `: ping\n\n`);
-	}
-}, 20_000);
+setInterval(() => broadcastEvent('ping', 'ping'), 2_000);
 
 function safeEnqueue(subsciber: Subscriber, payload: string) {
 	try {
