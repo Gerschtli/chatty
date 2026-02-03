@@ -43,7 +43,7 @@ export const actions = {
 		};
 		await db.insert(table.message).values(message);
 
-		broadcastEvent('message', { ...message, user: { username: user.username } });
+		broadcastEvent('messageSent', { ...message, user: { username: user.username } });
 	}
 };
 function requireLogin() {

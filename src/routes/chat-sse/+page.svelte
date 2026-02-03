@@ -16,8 +16,8 @@
 			console.error('SSE error:', err);
 		});
 
-		sseClient.addHandler('message', (payload) => {
-			console.info('Received message from server: ', payload);
+		sseClient.addHandler('messageSent', (payload) => {
+			console.info('Received messageSent from server: ', payload);
 			messages.push(payload);
 		});
 

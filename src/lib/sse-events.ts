@@ -1,8 +1,7 @@
 import z from 'zod';
 
-// FIXME: do not use special key "message"
 export const events = {
-	message: z.object({
+	messageSent: z.object({
 		id: z.string(),
 		userId: z.string(),
 		user: z.object({
@@ -19,4 +18,4 @@ export type Events = {
 	[K in keyof typeof events]: z.infer<(typeof events)[K]>;
 };
 
-export type Message = Events['message'];
+export type Message = Events['messageSent'];
