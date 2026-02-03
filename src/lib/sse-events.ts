@@ -9,7 +9,9 @@ export const events = {
 		}),
 		content: z.string(),
 		createdAt: z.date()
-	})
+	}),
+	ping: z.literal('ping'),
+	error: z.literal('error')
 };
 
 export type Events = {

@@ -26,11 +26,13 @@ export class SseClient {
 			return;
 		}
 
-		this.#handlers[eventName] = [handler];
+		this.#handlers[eventName] = [];
+		this.#handlers[eventName].push(handler);
 
 		this.#eventSource.addEventListener(eventName, (event: MessageEvent<string>) => {
 			try {
-				const payload = events[eventName as keyof Events].parse(devalue.parse(event.data));
+				const devalued = devalue.parse(event.data);
+				const payload = events[eventName].parse(devalued) as Events[typeof eventName];
 
 				for (const handler of this.#handlers[eventName] || []) {
 					handler(payload);
