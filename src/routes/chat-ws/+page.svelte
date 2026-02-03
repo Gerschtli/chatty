@@ -5,7 +5,6 @@
 
 	let { data } = $props();
 
-	let isConnected = $state(false);
 	let messages = $state<Message[]>([]);
 
 	onMount(() => {
@@ -25,4 +24,4 @@
 	});
 </script>
 
-<Chat {isConnected} {messages} userId={data.userId} />
+<Chat connectionStatus="closed" {messages} userId={data.userId} />

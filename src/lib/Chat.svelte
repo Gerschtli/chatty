@@ -16,6 +16,7 @@
 	onMount(() => scrollToBottom('instant'));
 
 	$effect(() => {
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		messages.length;
 		scrollToBottom();
 	});
