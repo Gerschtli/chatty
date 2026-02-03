@@ -1,8 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
+	import type { Message } from './sse-events';
 
-	let { isConnected, messages, userId } = $props();
+	interface Props {
+		connectionStatus: 'connecting' | 'connected' | 'stale' | 'closed' | undefined;
+		messages: Message[];
+		userId: string;
+	}
+
+	let { connectionStatus, messages, userId }: Props = $props();
 
 	let scrollContainer: HTMLElement | null = null;
 
@@ -22,7 +29,7 @@
 	}
 </script>
 
-<pre>{JSON.stringify(isConnected, null, 2)}</pre>
+<pre>{JSON.stringify(connectionStatus, null, 2)}</pre>
 
 <div class="m-4 flex h-100 flex-col justify-between rounded-lg border-2 border-slate-400">
 	<div bind:this={scrollContainer} class="overflow-auto p-4">
@@ -48,6 +55,7 @@
 		{/each}
 	</div>
 
+	<!-- TODO: add optimistic UI: show message after submit before SSE is received (idea: match via client generated UUID) -->
 	<form method="post" action="?/sendMessage" use:enhance class="flex gap-4 p-4">
 		<input class="input grow" type="text" name="content" placeholder="Type a message..." required />
 		<input class="btn btn-primary" type="submit" value="Send" />

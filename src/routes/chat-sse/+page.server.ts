@@ -29,6 +29,12 @@ export const actions = {
 
 		if (!content) error(400, 'Message content cannot be empty');
 
+		if (content === 'error') {
+			broadcastEvent('error', 'error');
+
+			return;
+		}
+
 		const message = {
 			id: randomUUID(),
 			userId: user.id,

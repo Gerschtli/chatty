@@ -4,6 +4,7 @@ import * as devalue from 'devalue';
 type Subscriber = {
 	controller: ReadableStreamDefaultController<string>;
 	id: string;
+	lastEventId: number; // FIXME: this does not make any sense right now
 };
 
 const subscribers = new Map<string, Subscriber>();
@@ -14,7 +15,7 @@ export function subscribe() {
 
 	const stream = new ReadableStream<string>({
 		start(controller) {
-			subscribers.set(id, { controller, id });
+			subscribers.set(id, { controller, id, lastEventId: -1 });
 			// Send a comment to establish the stream
 			controller.enqueue(': connected\n\n');
 		},
@@ -39,7 +40,7 @@ setInterval(() => broadcastEvent('ping', 'ping'), 2_000);
 
 function safeEnqueue(subsciber: Subscriber, payload: string) {
 	try {
-		subsciber.controller.enqueue(payload);
+		subsciber.controller.enqueue(`id: ${++subsciber.lastEventId}\n${payload}`);
 	} catch (err) {
 		console.error('Failed to enqueue to subscriber', err);
 		// remove subscriber on error

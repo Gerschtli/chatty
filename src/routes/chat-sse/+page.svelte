@@ -1,36 +1,37 @@
 <script lang="ts">
 	import Chat from '$lib/Chat.svelte';
-	import { SseClient } from '$lib/sse';
 	import type { Message } from '$lib/sse-events';
+	import { SseClient } from '$lib/sse.svelte.js';
 	import { onMount } from 'svelte';
 
 	let { data } = $props();
 
-	let isConnected = $state(false);
 	let messages = $state<Message[]>([]);
+	let sseClient: SseClient | null = $state(null);
 
 	onMount(() => {
 		messages = data.messages.slice();
 
-		const sseClient = new SseClient('/chat-sse/api', (err) => {
+		sseClient = new SseClient('/chat-sse/api', (err) => {
 			console.error('SSE error:', err);
 		});
 
-		sseClient.addHandler('message', async (payload) => {
+		sseClient.addHandler('message', (payload) => {
+			console.info('Received message from server: ', payload);
 			messages.push(payload);
 		});
 
-		sseClient.addHandler('ping', async () => {
+		sseClient.addHandler('ping', () => {
 			console.info('Received ping from server');
 		});
 
-		sseClient.addHandler('error', async () => {
+		sseClient.addHandler('error', () => {
 			console.error('Received error from server');
 			throw new Error('SSE Error received from server');
 		});
 
-		return () => sseClient.close();
+		return () => sseClient?.close();
 	});
 </script>
 
-<Chat {isConnected} {messages} userId={data.userId} />
+<Chat connectionStatus={sseClient?.connectionStatus} {messages} userId={data.userId} />

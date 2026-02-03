@@ -1,5 +1,6 @@
 import z from 'zod';
 
+// FIXME: do not use special key "message"
 export const events = {
 	message: z.object({
 		id: z.string(),
