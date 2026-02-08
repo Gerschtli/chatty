@@ -3,6 +3,7 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import { broadcastEvent } from '$lib/server/sse';
 import { error, redirect } from '@sveltejs/kit';
+import { desc } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 export async function load() {
@@ -17,7 +18,13 @@ export async function load() {
 		}
 	});
 
-	return { messages, userId: user.id };
+	const lastEvent = await db
+		.select({ id: table.event.id })
+		.from(table.event)
+		.orderBy(desc(table.event.id))
+		.limit(1);
+
+	return { messages, userId: user.id, lastEventId: lastEvent?.[0]?.id };
 }
 
 export const actions = {

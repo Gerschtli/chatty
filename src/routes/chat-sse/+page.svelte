@@ -21,10 +21,6 @@
 			messages.push(payload);
 		});
 
-		sseClient.addHandler('ping', () => {
-			console.info('Received ping from server');
-		});
-
 		sseClient.addHandler('error', () => {
 			console.error('Received error from server');
 			throw new Error('SSE Error received from server');

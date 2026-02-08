@@ -20,11 +20,19 @@ export class SseClient {
 		};
 
 		this.#eventSource.onerror = (event) => {
+			console.log('readyState', this.#eventSource.readyState);
 			this.#connectionStatus =
 				this.#eventSource.readyState === EventSource.CLOSED ? 'closed' : 'connecting';
 
 			this.#errorHandler(new Error(`SSE connection error: ${JSON.stringify(event)}`));
 		};
+
+		this.#eventSource.addEventListener('message', (event) => {
+			console.log('received', event);
+			this.#restartStaleTimeout();
+		});
+
+		this.addHandler("ping", () => {})
 
 		this.#restartStaleTimeout();
 	}
@@ -50,23 +58,25 @@ export class SseClient {
 	// TODO: what happens if event handlers are added after message received? can messages be missed?
 	// what happens between message fetch on load and SSE connection established? updates could be missed
 	// check out ID and Last-Event-ID header/lastEventId query param
-	addHandler<T extends keyof Events>(eventName: T, handler: (data: Events[T]) => void) {
-		if (this.#handlers[eventName]) {
-			this.#handlers[eventName].push(handler);
+	addHandler<T extends keyof Events>(type: T, handler: (data: Events[T]) => void) {
+		if (this.#handlers[type]) {
+			this.#handlers[type].push(handler);
 			return;
 		}
 
-		this.#handlers[eventName] = [];
-		this.#handlers[eventName].push(handler);
+		this.#handlers[type] = [];
+		this.#handlers[type].push(handler);
 
-		this.#eventSource.addEventListener(eventName, (event: MessageEvent<string>) => {
+		this.#eventSource.addEventListener(type, (event: MessageEvent<string>) => {
 			this.#restartStaleTimeout();
+
+			console.log(devalue.stringify('ping'));
 
 			try {
 				const devalued = devalue.parse(event.data);
-				const payload = events[eventName].parse(devalued) as Events[typeof eventName];
+				const payload = events[type].parse(devalued) as Events[typeof type];
 
-				for (const handler of this.#handlers[eventName] || []) {
+				for (const handler of this.#handlers[type] || []) {
 					handler(payload);
 				}
 			} catch (err) {
