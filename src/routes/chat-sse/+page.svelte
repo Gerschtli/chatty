@@ -12,17 +12,16 @@
 	onMount(() => {
 		messages = data.messages.slice();
 
-		sseClient = new SseClient('/chat-sse/api', (err) => {
-			console.error('SSE error:', err);
-		});
+		sseClient = new SseClient(
+			`/chat-sse/api${data.lastEventId === null ? '' : `?lastEventId=${data.lastEventId}`}`,
+			(err) => {
+				console.error('SSE error:', err);
+			}
+		);
 
 		sseClient.addHandler('messageSent', (payload) => {
 			console.info('Received messageSent from server: ', payload);
 			messages.push(payload);
-		});
-
-		sseClient.addHandler('ping', () => {
-			console.info('Received ping from server');
 		});
 
 		sseClient.addHandler('error', () => {

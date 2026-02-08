@@ -20,26 +20,25 @@ export class SseClient {
 		};
 
 		this.#eventSource.onerror = (event) => {
-			this.#connectionStatus =
-				this.#eventSource.readyState === EventSource.CLOSED ? 'closed' : 'connecting';
+			if (this.#eventSource.readyState === EventSource.CLOSED) this.#connectionStatus = 'closed';
+			if (this.#eventSource.readyState === EventSource.CONNECTING)
+				this.#connectionStatus = 'connecting';
 
 			this.#errorHandler(new Error(`SSE connection error: ${JSON.stringify(event)}`));
 		};
+
+		this.addHandler('ping', () => {});
 
 		this.#restartStaleTimeout();
 	}
 
 	#restartStaleTimeout() {
-		if (this.#staleTimeout) clearTimeout(this.#staleTimeout);
+		clearTimeout(this.#staleTimeout);
 
-		if (this.#connectionStatus === 'stale') {
-			this.#connectionStatus = 'connected';
-		}
+		if (this.#connectionStatus === 'stale') this.#connectionStatus = 'connected';
 
 		this.#staleTimeout = setTimeout(() => {
-			if (this.#connectionStatus === 'connected') {
-				this.#connectionStatus = 'stale';
-			}
+			if (this.#connectionStatus === 'connected') this.#connectionStatus = 'stale';
 		}, CONNECTION_STALE_TIMEOUT_MS);
 	}
 

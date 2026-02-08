@@ -25,6 +25,12 @@ export const message = sqliteTable('message', {
 	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 });
 
+export const event = sqliteTable('event', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	type: text('type').notNull(),
+	data: text('data').notNull()
+});
+
 export type Session = typeof session.$inferSelect;
 
 export type User = typeof user.$inferSelect;
