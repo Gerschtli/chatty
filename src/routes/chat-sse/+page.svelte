@@ -12,7 +12,7 @@
 	onMount(() => {
 		messages = data.messages.slice();
 
-		sseClient = new SseClient('/chat-sse/api', (err) => {
+		sseClient = new SseClient(`/chat-sse/api`, (err) => {
 			console.error('SSE error:', err);
 		});
 

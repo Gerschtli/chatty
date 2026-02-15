@@ -1,0 +1,17 @@
+import type { Subscriber } from './sse';
+
+const subscribers = new Map<string, Map<string, Subscriber>>();
+
+export function addSubscriber(subscriber: Subscriber) {
+	if (!subscribers.has(subscriber.userId)) subscribers.set(subscriber.userId, new Map());
+
+	subscribers.get(subscriber.userId)!.set(subscriber.id, subscriber);
+}
+
+export function removeSubscriber(subscriber: Subscriber) {
+	subscribers.get(subscriber.userId)?.delete(subscriber.id);
+}
+
+export function getSubscriber(userId: string) {
+	return subscribers.get(userId)?.values() ?? [];
+}
