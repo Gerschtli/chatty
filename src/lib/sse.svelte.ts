@@ -47,9 +47,6 @@ export class SseClient {
 		return this.#connectionStatus;
 	}
 
-	// TODO: what happens if event handlers are added after message received? can messages be missed?
-	// what happens between message fetch on load and SSE connection established? updates could be missed
-	// check out ID and Last-Event-ID header/lastEventId query param
 	addHandler<T extends keyof Events>(eventName: T, handler: (data: Events[T]) => void) {
 		if (this.#handlers[eventName]) {
 			this.#handlers[eventName].push(handler);

@@ -23,6 +23,7 @@ export async function GET({ request, url }) {
 	});
 }
 
+// TODO: implement
 async function loadEventsAfter(lastEventId: string | null) {
 	console.log('loading events after:', lastEventId);
 	return [

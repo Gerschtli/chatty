@@ -12,6 +12,8 @@
 	onMount(() => {
 		messages = data.messages.slice();
 
+		// TODO: create one client in +layout.svelte and merge SSR and SSE state on page navigation
+		// TODO: set lastEventId param
 		sseClient = new SseClient(`/chat-sse/api`, (err) => {
 			console.error('SSE error:', err);
 		});

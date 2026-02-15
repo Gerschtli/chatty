@@ -48,6 +48,7 @@ export const actions = {
 	}
 };
 
+// TODO: replace with transactional outbox pattern and separate outbox handler job
 function broadcastEvent<T extends keyof Events>(event: T, data: Events[T]) {
 	for (const subscriber of getAllSubscribers()) {
 		subscriber.push({ id: randomUUID(), type: event, data });
