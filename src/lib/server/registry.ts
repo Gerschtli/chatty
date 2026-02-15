@@ -2,7 +2,7 @@ import type { Subscriber } from './sse';
 
 const subscribers = new Map<string, Map<string, Subscriber>>();
 
-export function addSubscriber(subscriber: Subscriber) {
+export function registerSubscriber(subscriber: Subscriber) {
 	if (!subscribers.has(subscriber.userId)) subscribers.set(subscriber.userId, new Map());
 
 	subscribers.get(subscriber.userId)!.set(subscriber.id, subscriber);
@@ -12,6 +12,10 @@ export function removeSubscriber(subscriber: Subscriber) {
 	subscribers.get(subscriber.userId)?.delete(subscriber.id);
 }
 
-export function getSubscriber(userId: string) {
+export function getSubscribers(userId: string) {
 	return subscribers.get(userId)?.values() ?? [];
+}
+
+export function getAllSubscribers() {
+	return subscribers.values().flatMap((m) => m.values());
 }

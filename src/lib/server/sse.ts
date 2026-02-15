@@ -1,49 +1,94 @@
-import type { Events } from '$lib/sse-events';
 import * as devalue from 'devalue';
+import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 
-type Subscriber = {
-	controller: ReadableStreamDefaultController<string>;
-	id: string;
-	lastEventId: number; // FIXME: this does not make any sense right now
+export type Event = {
+	id?: string;
+	type: string;
+	data: unknown;
 };
 
-const subscribers = new Map<string, Subscriber>();
-let nextId = 0;
+export class Subscriber {
+	static readonly PING_INTERVAL_MS = 3_000;
 
-export function subscribe() {
-	const id = String(++nextId);
+	readonly id: string;
 
-	const stream = new ReadableStream<string>({
-		start(controller) {
-			subscribers.set(id, { controller, id, lastEventId: -1 });
-			// Send a comment to establish the stream
-			controller.enqueue(': connected\n\n');
-		},
-		cancel() {
-			subscribers.delete(id);
-		}
-	});
+	#intervalPing: NodeJS.Timeout | undefined;
+	#stream: Readable;
 
-	return { id, stream };
-}
+	#closeHandlers: (() => void)[] = [];
+	#initialEvents: Event[] = [];
 
-export function broadcastEvent<T extends keyof Events>(event: T, data: Events[T]) {
-	const payload = `event: ${event}\ndata: ${devalue.stringify(data)}\n\n`;
-
-	for (const subsciber of subscribers.values()) {
-		safeEnqueue(subsciber, payload);
+	constructor(readonly userId: string) {
+		this.id = randomUUID();
+		this.#stream = new Readable({
+			objectMode: true,
+			read() {}
+		});
 	}
-}
 
-// Send a lightweight ping to keep connections alive when idle
-setInterval(() => broadcastEvent('ping', 'ping'), 2_000);
+	onClose(handler: () => void) {
+		this.#closeHandlers.push(handler);
+	}
 
-function safeEnqueue(subsciber: Subscriber, payload: string) {
-	try {
-		subsciber.controller.enqueue(`id: ${++subsciber.lastEventId}\n${payload}`);
-	} catch (err) {
-		console.error('Failed to enqueue to subscriber', err);
-		// remove subscriber on error
-		subscribers.delete(subsciber.id);
+	setInitialEvents(initialEvents: Event[]) {
+		this.#initialEvents = initialEvents;
+	}
+
+	push(event: Event) {
+		this.#stream.push(event);
+	}
+
+	buildWebStream() {
+		return new ReadableStream<string>({
+			start: async (controller) => {
+				try {
+					console.info(`running start for subscriber ${this.id}`);
+					controller.enqueue(': connected\n\n');
+
+					this.#intervalPing = setInterval(
+						() => this.#enqueue(controller, { type: 'ping', data: undefined }),
+						Subscriber.PING_INTERVAL_MS
+					);
+
+					console.debug('sending initial events...');
+					for (const event of this.#initialEvents) {
+						console.debug('sending previous event');
+						this.#enqueue(controller, event);
+					}
+
+					console.debug('waiting for live events...');
+					for await (const event of this.#stream) {
+						console.debug('forwarding live event');
+						this.#enqueue(controller, event as Event);
+					}
+				} catch (e) {
+					controller.close();
+					this.#close('error', e);
+				}
+			},
+			cancel: (reason: unknown) => this.#close('cancel', reason)
+		});
+	}
+
+	#close(type: 'error' | 'cancel', reason: unknown) {
+		console.error(`closing because of ${type}: ${reason}`);
+
+		clearInterval(this.#intervalPing);
+
+		this.#stream.destroy();
+
+		for (const closeHandler of this.#closeHandlers) {
+			closeHandler();
+		}
+	}
+
+	#enqueue(controller: ReadableStreamDefaultController<string>, event: Event) {
+		const payload =
+			(event.id ? `id: ${event.id}\n` : '') +
+			`event: ${event.type}\n` +
+			`data: ${devalue.stringify(event.data)}\n\n`;
+
+		controller.enqueue(payload);
 	}
 }

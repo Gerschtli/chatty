@@ -1,8 +1,9 @@
-import { getRequestEvent } from '$app/server';
+import { requireLogin } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { broadcastEvent } from '$lib/server/sse';
-import { error, redirect } from '@sveltejs/kit';
+import { getAllSubscribers } from '$lib/server/registry';
+import type { Events } from '$lib/sse-events';
+import { error } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 
 export async function load() {
@@ -46,10 +47,9 @@ export const actions = {
 		broadcastEvent('messageSent', { ...message, user: { username: user.username } });
 	}
 };
-function requireLogin() {
-	const { locals } = getRequestEvent();
 
-	if (!locals.user) redirect(302, '/demo/lucia/login');
-
-	return locals.user;
+function broadcastEvent<T extends keyof Events>(event: T, data: Events[T]) {
+	for (const subscriber of getAllSubscribers()) {
+		subscriber.push({ id: randomUUID(), type: event, data });
+	}
 }
