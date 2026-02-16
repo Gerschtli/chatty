@@ -7,15 +7,25 @@
 	let sseClient = $state<SseClient>();
 	setSseClient(() => sseClient);
 
-	onMount(() => {
+	// it's not a but, it's a feature
+	// prevent reactive updates on e.g. form submissions
+	// svelte-ignore state_referenced_locally
+	const lastEventId = data.lastEventId;
+
+	function buildSseUrl() {
 		const url = new URL(`/sse`, window.location.href);
-		if (data.lastEventId) {
-			url.searchParams.append('lastEventId', String(data.lastEventId));
+		if (lastEventId) {
+			url.searchParams.append('lastEventId', String(lastEventId));
 		}
 
-		sseClient = new SseClient(url.toString(), (err) => {
+		return url.toString();
+	}
+
+	onMount(() => {
+		sseClient = new SseClient(buildSseUrl(), (err) => {
 			console.error('SSE error:', err);
 		});
+
 		sseClient.addHandler('error', () => {
 			console.error('Received error from server');
 			throw new Error('SSE Error received from server');

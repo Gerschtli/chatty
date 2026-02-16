@@ -2,21 +2,23 @@
 	import Chat from '$lib/Chat.svelte';
 	import type { Message } from '$lib/sse-events';
 	import { getSseClient } from '$lib/sse.svelte';
-	import { onMount } from 'svelte';
+	import { untrack } from 'svelte';
 
 	let { data } = $props();
 
 	const sseClient = getSseClient();
-	let messages = $state<Message[]>([]);
 
-	onMount(() => {
-		messages = data.messages.slice();
+	// TODO: take copy on mount or take advantage of SSR updates of messages array?
+	// let messages = $derived(data.messages);
+	// svelte-ignore state_referenced_locally
+	let messages = $state<Message[]>(data.messages);
 
+	$effect(() => {
 		// TODO: handle missed events during during SSR
 		// TODO: removeHandler on component destroy
 		sseClient()?.addHandler('messageSent', (payload) => {
 			console.info('Received messageSent from server: ', payload);
-			messages.push(payload);
+			untrack(() => messages).push(payload);
 		});
 	});
 </script>

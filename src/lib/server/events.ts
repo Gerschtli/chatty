@@ -2,14 +2,16 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { Events } from '$lib/sse-events';
 import * as devalue from 'devalue';
-import { and, desc, eq, gt, SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, SQL } from 'drizzle-orm';
 
 export async function getLastEventId(userId: string) {
-	return await db.query.event.findFirst({
+	const lastEvent = await db.query.event.findFirst({
 		where: eq(table.event.userId, userId),
 		orderBy: desc(table.event.id),
 		columns: { id: true }
 	});
+
+	return lastEvent?.id;
 }
 
 export async function loadEventsAfter(userId: string, lastEventId: string | null) {
@@ -25,7 +27,7 @@ export async function loadEventsAfter(userId: string, lastEventId: string | null
 
 	return await db.query.event.findMany({
 		where,
-		orderBy: desc(table.event.id),
+		orderBy: asc(table.event.id),
 		columns: { id: true, type: true, data: true }
 	});
 }

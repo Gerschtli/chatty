@@ -39,36 +39,38 @@ export class Subscriber {
 
 	buildWebStream() {
 		return new ReadableStream<string>({
-			start: async (controller) => {
-				try {
-					console.info(`running start for subscriber ${this.id}`);
-					controller.enqueue(
-						`: connected\nretry: ${config.server.clientReconnectRetryIntervalsMs}\n\n`
-					);
-
-					this.#intervalPing = setInterval(
-						() => controller.enqueue(this.#convertEventToPayload({ type: 'ping', data: '-1' })), // -1 == undefined in devalue
-						config.server.pingSendingIntervalMs
-					);
-
-					console.debug('sending initial events...');
-					for (const event of this.#initialEvents) {
-						console.debug('sending previous event');
-						controller.enqueue(this.#convertEventToPayload(event));
-					}
-
-					console.debug('waiting for live events...');
-					for await (const event of this.#stream) {
-						console.debug('forwarding live event');
-						controller.enqueue(this.#convertEventToPayload(event as Event));
-					}
-				} catch (e) {
-					controller.close();
-					this.#close('error', e);
-				}
-			},
+			start: (controller) => this.#startWebStream(controller),
 			cancel: (reason: unknown) => this.#close('cancel', reason)
 		});
+	}
+
+	async #startWebStream(controller: ReadableStreamDefaultController<string>) {
+		try {
+			console.info(`running start for subscriber ${this.id}`);
+			controller.enqueue(
+				`: connected\nretry: ${config.server.clientReconnectRetryIntervalsMs}\n\n`
+			);
+
+			this.#intervalPing = setInterval(
+				() => controller.enqueue(this.#convertEventToPayload({ type: 'ping', data: '-1' })), // -1 == undefined in devalue
+				config.server.pingSendingIntervalMs
+			);
+
+			console.debug('sending initial events...');
+			for (const event of this.#initialEvents) {
+				console.debug('sending previous event', event.id);
+				controller.enqueue(this.#convertEventToPayload(event));
+			}
+
+			console.debug('waiting for live events...');
+			for await (const event of this.#stream) {
+				console.debug('forwarding live event', event.id);
+				controller.enqueue(this.#convertEventToPayload(event as Event));
+			}
+		} catch (e) {
+			controller.close();
+			this.#close('error', e);
+		}
 	}
 
 	#close(type: 'error' | 'cancel', reason: unknown) {

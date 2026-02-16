@@ -30,7 +30,10 @@
 	}
 </script>
 
-<pre>{JSON.stringify(connectionStatus, null, 2)}</pre>
+<div class="mx-6 mt-2 text-right text-xs">
+	<span class="text-slate-400">status:</span>
+	{connectionStatus ?? 'connecting'}
+</div>
 
 <div class="m-4 flex h-100 flex-col justify-between rounded-lg border-2 border-slate-400">
 	<div bind:this={scrollContainer} class="overflow-auto p-4">

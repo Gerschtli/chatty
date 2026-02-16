@@ -6,5 +6,5 @@ export async function load() {
 
 	const lastEventId = await getLastEventId(user.id);
 
-	return { lastEventId: lastEventId?.id };
+	return { lastEventId };
 }
