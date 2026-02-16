@@ -1,33 +1,28 @@
+import { config } from '$lib/config';
 import * as table from '$lib/server/db/schema';
 import { asc, inArray } from 'drizzle-orm';
 import { db } from './db';
 import { getSubscribers } from './registry';
 
-export async function startOutboxWorker({
-	batchSize,
-	idleTimeoutMs
-}: {
-	batchSize: number;
-	idleTimeoutMs: number;
-}) {
+export async function startOutboxWorker() {
 	console.log('starting outbox handler');
 
 	while (true) {
 		try {
-			outboxHandler(batchSize);
+			outboxHandler();
 		} catch (e) {
 			console.error('error occurred in outbox handler', e);
 		}
 
-		await sleep(idleTimeoutMs);
+		await sleep(config.outbox.idleTimeoutMs);
 	}
 }
 
-async function outboxHandler(batchSize: number) {
+async function outboxHandler() {
 	while (true) {
 		const outboxResults = await db.query.outbox.findMany({
 			orderBy: asc(table.outbox.id),
-			limit: batchSize,
+			limit: config.outbox.batchSize,
 			with: { event: true }
 		});
 

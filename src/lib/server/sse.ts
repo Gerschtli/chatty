@@ -1,3 +1,4 @@
+import { config } from '$lib/config';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
@@ -8,8 +9,6 @@ export type Event = {
 };
 
 export class Subscriber {
-	static readonly PING_INTERVAL_MS = 30_000;
-
 	readonly id: string;
 
 	#intervalPing: NodeJS.Timeout | undefined;
@@ -43,11 +42,13 @@ export class Subscriber {
 			start: async (controller) => {
 				try {
 					console.info(`running start for subscriber ${this.id}`);
-					controller.enqueue(': connected\n\n');
+					controller.enqueue(
+						`: connected\nretry: ${config.server.clientReconnectRetryIntervalsMs}\n\n`
+					);
 
 					this.#intervalPing = setInterval(
 						() => this.#enqueue(controller, { type: 'ping', data: '-1' }), // -1 == undefined in devalue
-						Subscriber.PING_INTERVAL_MS
+						config.server.pingSendingIntervalMs
 					);
 
 					console.debug('sending initial events...');

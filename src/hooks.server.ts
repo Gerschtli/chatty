@@ -2,10 +2,7 @@ import * as auth from '$lib/server/auth';
 import { startOutboxWorker } from '$lib/server/outbox';
 import type { Handle } from '@sveltejs/kit';
 
-startOutboxWorker({
-	batchSize: 100,
-	idleTimeoutMs: 200
-});
+startOutboxWorker();
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const sessionToken = event.cookies.get(auth.sessionCookieName);

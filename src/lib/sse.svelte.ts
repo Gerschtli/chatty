@@ -1,7 +1,6 @@
 import * as devalue from 'devalue';
+import { config } from './config';
 import { events, type Events } from './sse-events';
-
-const CONNECTION_STALE_TIMEOUT_MS = 40_000;
 
 export class SseClient {
 	#eventSource: EventSource;
@@ -19,10 +18,12 @@ export class SseClient {
 			this.#connectionStatus = 'connected';
 		};
 
-		// TODO: ensure the status is set currently
 		this.#eventSource.onerror = (event) => {
-			this.#connectionStatus =
-				this.#eventSource.readyState === EventSource.CLOSED ? 'closed' : 'connecting';
+			if (this.#eventSource.readyState === EventSource.CLOSED) {
+				this.#connectionStatus = 'closed';
+			} else if (this.#eventSource.readyState === EventSource.CONNECTING) {
+				this.#connectionStatus = 'connecting';
+			}
 
 			this.#errorHandler(new Error(`SSE connection error: ${JSON.stringify(event)}`));
 		};
@@ -43,7 +44,7 @@ export class SseClient {
 			if (this.#connectionStatus === 'connected') {
 				this.#connectionStatus = 'stale';
 			}
-		}, CONNECTION_STALE_TIMEOUT_MS);
+		}, config.client.connectionStaleTimeoutMs);
 	}
 
 	get connectionStatus() {
