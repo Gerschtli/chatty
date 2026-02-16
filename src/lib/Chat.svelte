@@ -61,7 +61,16 @@
 
 	<!-- TODO: add optimistic UI: show message after submit before SSE is received (idea: match via client generated UUID) -->
 	<form method="post" action="?/sendMessage" use:enhance class="flex gap-4 p-4">
-		<input class="input grow" type="text" name="content" placeholder="Type a message..." required />
+		<!-- svelte-ignore a11y_autofocus -->
+		<input
+			class="input grow"
+			type="text"
+			name="content"
+			placeholder="Type a message..."
+			autocomplete="off"
+			autofocus
+			required
+		/>
 		<input class="btn btn-primary" type="submit" value="Send" />
 	</form>
 </div>
