@@ -12,9 +12,13 @@
 	onMount(() => {
 		messages = data.messages.slice();
 
+		const url = new URL(`/chat-sse/api`, window.location.href);
+		if (data.lastEventId) {
+			url.searchParams.append('lastEventId', String(data.lastEventId));
+		}
+
 		// TODO: create one client in +layout.svelte and merge SSR and SSE state on page navigation
-		// TODO: set lastEventId param
-		sseClient = new SseClient(`/chat-sse/api`, (err) => {
+		sseClient = new SseClient(url.toString(), (err) => {
 			console.error('SSE error:', err);
 		});
 

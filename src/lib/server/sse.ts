@@ -1,11 +1,10 @@
-import * as devalue from 'devalue';
 import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
 export type Event = {
-	id?: string;
+	id?: string | number;
 	type: string;
-	data: unknown;
+	data: string;
 };
 
 export class Subscriber {
@@ -47,7 +46,7 @@ export class Subscriber {
 					controller.enqueue(': connected\n\n');
 
 					this.#intervalPing = setInterval(
-						() => this.#enqueue(controller, { type: 'ping', data: undefined }),
+						() => this.#enqueue(controller, { type: 'ping', data: '-1' }), // -1 == undefined in devalue
 						Subscriber.PING_INTERVAL_MS
 					);
 
@@ -84,10 +83,7 @@ export class Subscriber {
 	}
 
 	#enqueue(controller: ReadableStreamDefaultController<string>, event: Event) {
-		const payload =
-			(event.id ? `id: ${event.id}\n` : '') +
-			`event: ${event.type}\n` +
-			`data: ${devalue.stringify(event.data)}\n\n`;
+		const payload = `${event.id ? `id: ${event.id}\n` : ''}event: ${event.type}\ndata: ${event.data}\n\n`;
 
 		controller.enqueue(payload);
 	}

@@ -1,14 +1,14 @@
 import { requireLogin } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { getAllSubscribers } from '$lib/server/registry';
-import type { Events } from '$lib/sse-events';
+import { getLastEventId, persistEvent } from '$lib/server/events';
 import { error } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 
 export async function load() {
 	const user = requireLogin();
 
+	const lastEventId = await getLastEventId(user.id);
 	const messages = await db.query.message.findMany({
 		orderBy: (message, { asc }) => [asc(message.createdAt)],
 		with: {
@@ -18,7 +18,7 @@ export async function load() {
 		}
 	});
 
-	return { messages, userId: user.id };
+	return { messages, userId: user.id, lastEventId: lastEventId?.id };
 }
 
 export const actions = {
@@ -31,7 +31,7 @@ export const actions = {
 		if (!content) error(400, 'Message content cannot be empty');
 
 		if (content === 'error') {
-			broadcastEvent('error', 'error');
+			await persistEvent(user.id, 'error', 'error');
 
 			return;
 		}
@@ -44,13 +44,6 @@ export const actions = {
 		};
 		await db.insert(table.message).values(message);
 
-		broadcastEvent('messageSent', { ...message, user: { username: user.username } });
+		await persistEvent(user.id, 'messageSent', { ...message, user: { username: user.username } });
 	}
 };
-
-// TODO: replace with transactional outbox pattern and separate outbox handler job
-function broadcastEvent<T extends keyof Events>(event: T, data: Events[T]) {
-	for (const subscriber of getAllSubscribers()) {
-		subscriber.push({ id: randomUUID(), type: event, data });
-	}
-}
