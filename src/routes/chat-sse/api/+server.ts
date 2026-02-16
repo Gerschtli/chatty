@@ -1,7 +1,7 @@
 import { requireLogin } from '$lib/server/auth';
+import { loadEventsAfter } from '$lib/server/events';
 import { registerSubscriber, removeSubscriber } from '$lib/server/registry';
-import { Subscriber, type Event } from '$lib/server/sse';
-import { randomUUID } from 'node:crypto';
+import { Subscriber } from '$lib/server/sse';
 
 export async function GET({ request, url }) {
 	const user = requireLogin();
@@ -12,7 +12,7 @@ export async function GET({ request, url }) {
 	registerSubscriber(subscriber);
 	subscriber.onClose(() => removeSubscriber(subscriber));
 
-	subscriber.setInitialEvents(await loadEventsAfter(lastEventId));
+	subscriber.setInitialEvents(await loadEventsAfter(user.id, lastEventId));
 
 	return new Response(subscriber.buildWebStream().pipeThrough(new TextEncoderStream()), {
 		headers: {
@@ -21,14 +21,4 @@ export async function GET({ request, url }) {
 			Connection: 'keep-alive'
 		}
 	});
-}
-
-// TODO: implement
-async function loadEventsAfter(lastEventId: string | null) {
-	console.log('loading events after:', lastEventId);
-	return [
-		{ id: randomUUID(), type: 'previous', data: 'prev1' },
-		{ id: randomUUID(), type: 'previous', data: 'prev2' },
-		{ id: randomUUID(), type: 'previous', data: 'prev3' }
-	] satisfies Event[];
 }

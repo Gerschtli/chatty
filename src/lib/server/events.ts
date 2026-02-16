@@ -2,13 +2,31 @@ import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
 import type { Events } from '$lib/sse-events';
 import * as devalue from 'devalue';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gt, SQL } from 'drizzle-orm';
 
 export async function getLastEventId(userId: string) {
 	return await db.query.event.findFirst({
 		where: eq(table.event.userId, userId),
 		orderBy: desc(table.event.id),
 		columns: { id: true }
+	});
+}
+
+export async function loadEventsAfter(userId: string, lastEventId: string | null) {
+	console.log('loading events after:', lastEventId);
+
+	let where: SQL<unknown> | undefined = eq(table.event.userId, userId);
+	if (lastEventId) {
+		const lastEventIdNumber = parseInt(lastEventId);
+		if (!isNaN(lastEventIdNumber)) {
+			where = and(where, gt(table.event.id, lastEventIdNumber));
+		}
+	}
+
+	return await db.query.event.findMany({
+		where,
+		orderBy: desc(table.event.id),
+		columns: { id: true, type: true, data: true }
 	});
 }
 
