@@ -8,7 +8,7 @@ export type Event = {
 };
 
 export class Subscriber {
-	static readonly PING_INTERVAL_MS = 3_000;
+	static readonly PING_INTERVAL_MS = 30_000;
 
 	readonly id: string;
 

@@ -1,7 +1,7 @@
 import * as devalue from 'devalue';
 import { events, type Events } from './sse-events';
 
-const CONNECTION_STALE_TIMEOUT_MS = 3_000;
+const CONNECTION_STALE_TIMEOUT_MS = 40_000;
 
 export class SseClient {
 	#eventSource: EventSource;
