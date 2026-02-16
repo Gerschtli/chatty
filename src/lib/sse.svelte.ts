@@ -26,6 +26,8 @@ export class SseClient {
 			this.#errorHandler(new Error(`SSE connection error: ${JSON.stringify(event)}`));
 		};
 
+		this.addHandler('ping', () => {});
+
 		this.#restartStaleTimeout();
 	}
 
