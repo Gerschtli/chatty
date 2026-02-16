@@ -47,20 +47,20 @@ export class Subscriber {
 					);
 
 					this.#intervalPing = setInterval(
-						() => this.#enqueue(controller, { type: 'ping', data: '-1' }), // -1 == undefined in devalue
+						() => controller.enqueue(this.#convertEventToPayload({ type: 'ping', data: '-1' })), // -1 == undefined in devalue
 						config.server.pingSendingIntervalMs
 					);
 
 					console.debug('sending initial events...');
 					for (const event of this.#initialEvents) {
 						console.debug('sending previous event');
-						this.#enqueue(controller, event);
+						controller.enqueue(this.#convertEventToPayload(event));
 					}
 
 					console.debug('waiting for live events...');
 					for await (const event of this.#stream) {
 						console.debug('forwarding live event');
-						this.#enqueue(controller, event as Event);
+						controller.enqueue(this.#convertEventToPayload(event as Event));
 					}
 				} catch (e) {
 					controller.close();
@@ -83,9 +83,7 @@ export class Subscriber {
 		}
 	}
 
-	#enqueue(controller: ReadableStreamDefaultController<string>, event: Event) {
-		const payload = `${event.id ? `id: ${event.id}\n` : ''}event: ${event.type}\ndata: ${event.data}\n\n`;
-
-		controller.enqueue(payload);
+	#convertEventToPayload(event: Event) {
+		return `${event.id ? `id: ${event.id}\n` : ''}event: ${event.type}\ndata: ${event.data}\n\n`;
 	}
 }
