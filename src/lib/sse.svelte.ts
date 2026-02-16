@@ -19,6 +19,7 @@ export class SseClient {
 			this.#connectionStatus = 'connected';
 		};
 
+		// TODO: ensure the status is set currently
 		this.#eventSource.onerror = (event) => {
 			this.#connectionStatus =
 				this.#eventSource.readyState === EventSource.CLOSED ? 'closed' : 'connecting';
