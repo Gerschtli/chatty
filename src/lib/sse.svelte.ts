@@ -1,6 +1,11 @@
 import * as devalue from 'devalue';
+import { createContext } from 'svelte';
 import { config } from './config';
 import { events, type Events } from './sse-events';
+
+const [getSseClient, setSseClient] = createContext<() => SseClient | undefined>();
+
+export { getSseClient, setSseClient };
 
 export class SseClient {
 	#eventSource: EventSource;

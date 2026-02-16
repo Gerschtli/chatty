@@ -84,7 +84,7 @@ export function deleteSessionTokenCookie(event: RequestEvent) {
 export function requireLogin() {
 	const { locals } = getRequestEvent();
 
-	if (!locals.user) redirect(302, '/demo/lucia/login');
+	if (!locals.user) redirect(302, '/login');
 
 	return locals.user;
 }

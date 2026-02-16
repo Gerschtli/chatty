@@ -1,14 +1,13 @@
 import { requireLogin } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { getLastEventId, persistEvent } from '$lib/server/events';
+import { persistEvent } from '$lib/server/events';
 import { error } from '@sveltejs/kit';
 import { randomUUID } from 'node:crypto';
 
 export async function load() {
 	const user = requireLogin();
 
-	const lastEventId = await getLastEventId(user.id);
 	const messages = await db.query.message.findMany({
 		orderBy: (message, { asc }) => [asc(message.createdAt)],
 		with: {
@@ -18,7 +17,7 @@ export async function load() {
 		}
 	});
 
-	return { messages, userId: user.id, lastEventId: lastEventId?.id };
+	return { messages, userId: user.id };
 }
 
 export const actions = {
