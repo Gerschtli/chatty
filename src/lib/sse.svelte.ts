@@ -13,7 +13,7 @@ export class SseClient {
 	#handlers: Partial<{ [K in keyof Events]: ((data: Events[K]) => void)[] }> = {};
 
 	#connectionStatus: 'connecting' | 'connected' | 'stale' | 'closed' = $state('connecting');
-	#staleTimeout: NodeJS.Timeout | null = $state(null);
+	#staleTimeout = $state<NodeJS.Timeout>();
 
 	constructor(url: string, errorHandler: (err: unknown) => void) {
 		this.#eventSource = new EventSource(url);
@@ -39,7 +39,7 @@ export class SseClient {
 	}
 
 	#restartStaleTimeout() {
-		if (this.#staleTimeout) clearTimeout(this.#staleTimeout);
+		clearTimeout(this.#staleTimeout);
 
 		if (this.#connectionStatus === 'stale') {
 			this.#connectionStatus = 'connected';
@@ -56,23 +56,23 @@ export class SseClient {
 		return this.#connectionStatus;
 	}
 
-	addHandler<T extends keyof Events>(eventName: T, handler: (data: Events[T]) => void) {
-		if (this.#handlers[eventName]) {
-			this.#handlers[eventName].push(handler);
+	addHandler<T extends keyof Events>(type: T, handler: (data: Events[T]) => void) {
+		if (this.#handlers[type]) {
+			this.#handlers[type].push(handler);
 			return;
 		}
 
-		this.#handlers[eventName] = [];
-		this.#handlers[eventName].push(handler);
+		this.#handlers[type] = [];
+		this.#handlers[type].push(handler);
 
-		this.#eventSource.addEventListener(eventName, (event: MessageEvent<string>) => {
+		this.#eventSource.addEventListener(type, (event: MessageEvent<string>) => {
 			this.#restartStaleTimeout();
 
 			try {
 				const devalued = devalue.parse(event.data);
-				const payload = events[eventName].parse(devalued) as Events[typeof eventName];
+				const payload = events[type].parse(devalued) as Events[typeof type];
 
-				for (const handler of this.#handlers[eventName] || []) {
+				for (const handler of this.#handlers[type] || []) {
 					handler(payload);
 				}
 			} catch (err) {
