@@ -25,6 +25,7 @@
               packages = [
                 nodejs
                 nodejs.pkgs.pnpm
+                pkgs.sqlite-interactive
               ];
             } // (pkgs.lib.optionalAttrs
               (system != "aarch64-darwin")
