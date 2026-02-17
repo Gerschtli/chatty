@@ -32,7 +32,16 @@ export async function loadEventsAfter(userId: string, lastEventId: string | null
 	});
 }
 
-// TODO: persist for all relevant users (e.g. all in chat room)
+export async function persistEventForUserList<T extends keyof Events>(
+	userIds: string[],
+	type: T,
+	data: Events[T]
+) {
+	for (const userId of userIds) {
+		await persistEvent(userId, type, data);
+	}
+}
+
 export async function persistEvent<T extends keyof Events>(
 	userId: string,
 	type: T,
