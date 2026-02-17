@@ -2,7 +2,7 @@ import { extractChatId } from '$lib/chat';
 import { requireLogin } from '$lib/server/auth';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import { persistEventForUserList } from '$lib/server/events';
+import { getLastEventId, persistEventForUserList } from '$lib/server/events';
 import { error } from '@sveltejs/kit';
 import { and, asc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
@@ -11,6 +11,7 @@ export async function load({ params }) {
 	const user = requireLogin();
 	const chatId = extractChatId(params);
 
+	const lastEventId = await getLastEventId(user.id);
 	const chat = await db.query.chat.findFirst({
 		where: eq(table.chat.id, chatId),
 		columns: { id: true, name: true },
@@ -35,9 +36,13 @@ export async function load({ params }) {
 		}
 	});
 
+	console.log('start wait');
+	await new Promise((resolve) => setTimeout(resolve, 10_000));
+	console.log('end wait');
+
 	if (!chat) error(404, 'Chat not found');
 
-	return { chat, userId: user.id };
+	return { chat, userId: user.id, lastEventIdLocal: lastEventId };
 }
 
 export const actions = {

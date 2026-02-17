@@ -2,12 +2,12 @@
 	import { enhance } from '$app/forms';
 	import Chat from '$lib/Chat.svelte';
 	import type { Message } from '$lib/sse-events';
-	import { getSseClient } from '$lib/sse.svelte';
+	import { getSseClient } from '$lib/sse-wrapper.svelte';
 	import { untrack } from 'svelte';
 
 	let { data } = $props();
 
-	const sseClient = getSseClient();
+	const sseClientWrapper = getSseClient();
 
 	// TODO: take copy on mount or take advantage of SSR updates of messages array?
 	// let messages = $derived(data.messages);
@@ -15,16 +15,21 @@
 	let messages = $state<Message[]>(data.chat.messages);
 
 	$effect(() => {
+		console.log('lastEventId: ', data.lastEventIdLocal);
+	});
+
+	$effect(() => {
 		// TODO: handle missed events during during SSR
 		// TODO: removeHandler on component destroy
-		sseClient()?.addHandler('messageSent', (payload) => {
-			console.info('Received messageSent from server: ', payload);
+		sseClient()?.addHandler('messageSent', (payload, lastEventId) => {
+			console.info('Received messageSent from server: ', lastEventId, payload.content);
 			untrack(() => messages).push(payload);
 		});
 	});
 </script>
 
 <div class="m-4 flex items-center gap-4">
+	<a href="/" class="btn btn-primary">Home</a>
 	{#if data.chat.members.some((member) => member.user.id === data.userId)}
 		<form action="?/leaveChat" method="POST" use:enhance>
 			<input type="hidden" name="chatId" value={data.chat.id} />

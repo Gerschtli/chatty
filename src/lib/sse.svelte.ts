@@ -1,19 +1,15 @@
 import * as devalue from 'devalue';
-import { createContext } from 'svelte';
 import { config } from './config';
 import { events, type Events } from './sse-events';
-
-const [getSseClient, setSseClient] = createContext<() => SseClient | undefined>();
-
-export { getSseClient, setSseClient };
 
 export class SseClient {
 	#eventSource: EventSource;
 	#errorHandler: (err: unknown) => void;
-	#handlers: Partial<{ [K in keyof Events]: ((data: Events[K]) => void)[] }> = {};
+	#handlers: Partial<{ [K in keyof Events]: ((data: Events[K], lastEventId: string) => void)[] }> =
+		{};
 
 	#connectionStatus: 'connecting' | 'connected' | 'stale' | 'closed' = $state('connecting');
-	#staleTimeout = $state<NodeJS.Timeout>();
+	#staleTimeout: NodeJS.Timeout | undefined = undefined;
 
 	constructor(url: string, errorHandler: (err: unknown) => void) {
 		this.#eventSource = new EventSource(url);
@@ -56,7 +52,10 @@ export class SseClient {
 		return this.#connectionStatus;
 	}
 
-	addHandler<T extends keyof Events>(type: T, handler: (data: Events[T]) => void) {
+	addHandler<T extends keyof Events>(
+		type: T,
+		handler: (data: Events[T], lastEventId: string) => void
+	) {
 		if (this.#handlers[type]) {
 			this.#handlers[type].push(handler);
 			return;
@@ -73,7 +72,7 @@ export class SseClient {
 				const payload = events[type].parse(devalued) as Events[typeof type];
 
 				for (const handler of this.#handlers[type] || []) {
-					handler(payload);
+					handler(payload, event.lastEventId);
 				}
 			} catch (err) {
 				this.#errorHandler(err);
