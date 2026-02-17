@@ -1,16 +1,14 @@
 <script lang="ts">
 	import { setSseClient, SseClient } from '$lib/sse.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 
 	let { children, data } = $props();
 
 	let sseClient = $state<SseClient>();
 	setSseClient(() => sseClient);
 
-	// it's not a but, it's a feature
 	// prevent reactive updates on e.g. form submissions
-	// svelte-ignore state_referenced_locally
-	const lastEventId = data.lastEventId;
+	const lastEventId = untrack(() => data.lastEventId);
 
 	function buildSseUrl() {
 		const url = new URL(`/sse`, window.location.href);
