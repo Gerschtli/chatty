@@ -75,7 +75,7 @@ export class SseClient {
 				this.#updateConnectionStatus('connecting');
 			}
 
-			console.log(`SSE connection error: ${event}`);
+			console.log(`SSE connection error:`, this.#eventSource.readyState, event);
 		};
 
 		this.#eventSource.addEventListener('ping', () => this.#restartStaleTimeout());

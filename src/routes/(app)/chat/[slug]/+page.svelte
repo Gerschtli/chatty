@@ -39,6 +39,25 @@
 
 		return () => unsubsribe();
 	});
+
+	$effect(() => {
+		$inspect.trace();
+		chatId; // re-run the effect when the user navigates to a different chat
+		// console.log('Setting up SSE subscription for chat with id', chatId);
+
+		const { unsubsribe } = untrack(() =>
+			subscribe({
+				eventType: 'customError',
+				lastEventId: data.lastEventId,
+				handleEvent(payload, id) {
+					console.log(`Handling SSE data for event type customError:`, id);
+					throw new Error('A custom error occurred in the SSE connection');
+				}
+			})
+		);
+
+		return () => unsubsribe();
+	});
 </script>
 
 <a href="/chat/1">1</a>

@@ -71,7 +71,7 @@ export const actions = {
 		if (content === 'error') {
 			await persistEventForUserList(
 				chat.members.map((m) => m.user.id),
-				'error',
+				'customError',
 				'error'
 			);
 

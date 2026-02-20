@@ -1,5 +1,6 @@
 import z from 'zod';
 
+// do not use these names: "message", "error", "ping", "open"
 export const events = {
 	messageSent: z.object({
 		id: z.string(),
@@ -11,7 +12,7 @@ export const events = {
 		content: z.string(),
 		createdAt: z.date()
 	}),
-	error: z.literal('error')
+	customError: z.literal('error')
 };
 
 export type Events = {
