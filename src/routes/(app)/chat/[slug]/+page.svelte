@@ -1,32 +1,37 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Chat from '$lib/Chat.svelte';
+	import { subscribe } from '$lib/client';
 	import type { Message } from '$lib/sse-events';
-	import { getSseClient } from '$lib/sse-wrapper.svelte';
 	import { untrack } from 'svelte';
 
 	let { data } = $props();
 
-	const sseClientWrapper = getSseClient();
-
-	// TODO: take copy on mount or take advantage of SSR updates of messages array?
-	// let messages = $derived(data.messages);
-	// svelte-ignore state_referenced_locally
-	let messages = $state<Message[]>(data.chat.messages);
+	let chatId = $derived(data.chat.id);
+	let messages = $state<Message[]>([]);
 
 	$effect(() => {
-		console.log('lastEventId: ', data.lastEventIdLocal);
-	});
+		chatId; // re-run the effect when the user navigates to a different chat
+		// console.log('Setting up SSE subscription for chat with id', chatId);
 
-	$effect(() => {
-		// TODO: handle missed events during during SSR
-		// TODO: removeHandler on component destroy
-		sseClient()?.addHandler('messageSent', (payload, lastEventId) => {
-			console.info('Received messageSent from server: ', lastEventId, payload.content);
-			untrack(() => messages).push(payload);
+		messages = untrack(() => data.chat.messages);
+
+		const { unsubsribe } = subscribe({
+			lastEventId: untrack(() => data.lastEventId),
+			handleEvent(payload, id) {
+				console.log(`Handling SSE data for event type messageSent:`, id);
+				if (payload.chatId === chatId) {
+					untrack(() => messages).push(payload);
+				}
+			}
 		});
+
+		return () => unsubsribe();
 	});
 </script>
+
+<a href="/chat/1">1</a>
+<a href="/chat/2">2</a>
 
 <div class="m-4 flex items-center gap-4">
 	<a href="/" class="btn btn-primary">Home</a>
@@ -43,7 +48,7 @@
 	{/if}
 
 	<p>
-		{#each data.chat.members as { user }, i}
+		{#each data.chat.members as { user }, i (user.id)}
 			{#if i > 0}
 				,
 			{/if}
@@ -53,4 +58,4 @@
 	</p>
 </div>
 
-<Chat connectionStatus={sseClient()?.connectionStatus} {messages} userId={data.userId} />
+<Chat connectionStatus={undefined} {messages} userId={data.userId} />

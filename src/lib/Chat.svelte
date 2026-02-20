@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { onMount } from 'svelte';
+	import { afterNavigate } from '$app/navigation';
 	import type { Message } from './sse-events';
 
 	interface Props {
@@ -13,11 +13,12 @@
 
 	let scrollContainer: HTMLElement | null = null;
 
-	onMount(() => scrollToBottom('instant'));
+	afterNavigate(() => scrollToBottom('instant'));
 
 	$effect(() => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		messages.length;
+		// TODO: optimize: only scroll to bottom if the user is already near the bottom (idea: check scroll position before deciding whether to scroll)
 		scrollToBottom();
 	});
 

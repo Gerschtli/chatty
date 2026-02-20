@@ -1,19 +1,18 @@
 <script lang="ts">
-	import { setSseClient, SseClientWrapper } from '$lib/sse-wrapper.svelte';
-	import { onMount, untrack } from 'svelte';
+	import { getSseClientInBrowser, initSseClient } from '$lib/client.js';
+	import { untrack } from 'svelte';
 
 	let { children, data } = $props();
 
-	let sseClientWrapper = $state<SseClientWrapper>();
-	setSseClient(() => sseClientWrapper);
+	// svelte-ignore state_referenced_locally
+	initSseClient(untrack(() => data.lastEventId));
 
-	onMount(() => {
-		// prevent reactive updates on e.g. form submissions
-		sseClientWrapper = new SseClientWrapper(
-			untrack(() => (data.lastEventId ? String(data.lastEventId) : null))
-		);
+	// ensures that the SSE connection is closed when the user navigates away from the (app) layout (e.g. to the login page).
+	$effect(() => {
+		console.log('Setting up SSE client connection in app layout');
+		const sseClient = getSseClientInBrowser();
 
-		return () => sseClientWrapper?.close();
+		return () => sseClient.close();
 	});
 </script>
 

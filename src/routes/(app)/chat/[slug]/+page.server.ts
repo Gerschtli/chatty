@@ -25,7 +25,7 @@ export async function load({ params }) {
 				}
 			},
 			messages: {
-				columns: { id: true, userId: true, content: true, createdAt: true },
+				columns: { id: true, chatId: true, userId: true, content: true, createdAt: true },
 				orderBy: asc(table.message.createdAt),
 				with: {
 					user: {
@@ -36,13 +36,9 @@ export async function load({ params }) {
 		}
 	});
 
-	console.log('start wait');
-	await new Promise((resolve) => setTimeout(resolve, 10_000));
-	console.log('end wait');
-
 	if (!chat) error(404, 'Chat not found');
 
-	return { chat, userId: user.id, lastEventIdLocal: lastEventId };
+	return { chat, userId: user.id, lastEventId };
 }
 
 export const actions = {

@@ -3,6 +3,7 @@ import z from 'zod';
 export const events = {
 	messageSent: z.object({
 		id: z.string(),
+		chatId: z.int(),
 		userId: z.string(),
 		user: z.object({
 			username: z.string()
