@@ -2,7 +2,8 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Chat from '$lib/Chat.svelte';
-	import { type ConnectionStatus, getSseClientInBrowser, subscribe } from '$lib/client';
+	import { type ConnectionStatus, subscribe } from '$lib/client';
+	import { getSseClientInBrowser } from '$lib/client-management';
 	import type { Message } from '$lib/sse-events';
 	import { untrack } from 'svelte';
 

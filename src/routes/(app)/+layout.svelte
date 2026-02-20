@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getSseClientInBrowser, initSseClient } from '$lib/client.js';
+	import { getSseClientInBrowser, initSseClient } from '$lib/client-management';
 	import { untrack } from 'svelte';
 
 	let { children, data } = $props();
