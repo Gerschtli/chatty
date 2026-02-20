@@ -45,8 +45,11 @@ export class SseClient {
 	#events: { [T in keyof Events]?: EventEnvelope<T>[] } = {};
 	#listeners: { [T in keyof Events]?: Set<(event: EventEnvelope<T>) => void> } = {};
 
+	#lastEventId: number | undefined;
+
 	constructor(lastEventId: number | undefined) {
 		console.log('Creating new SseClient with lastEventId:', lastEventId);
+		this.#lastEventId = lastEventId;
 		this.#eventSource = new EventSource(this.#buildSseUrl(lastEventId));
 
 		this.#setupLifecycleHandlers();
@@ -116,9 +119,21 @@ export class SseClient {
 
 			const e = { id: parseInt(event.lastEventId), payload };
 			console.log(`Received SSE data for event type ${eventType}:`, e.id);
-			// TODO: add deduplication logic?
-			// TODO: consider limiting the number of stored messages to avoid memory issues in long-running sessions
+
+			if (e.id <= (this.#lastEventId ?? 0)) {
+				console.warn(
+					`Received event with id ${e.id} which is not greater than lastEventId ${this.#lastEventId}. Ignoring event.`,
+					{ eventType, payload }
+				);
+				return;
+			}
+
+			this.#lastEventId = e.id;
+
 			this.#events[eventType]!.push(e);
+			if (this.#events[eventType]!.length > config.client.maxStoredEventsPerType) {
+				this.#events[eventType]!.shift();
+			}
 
 			for (const l of this.#listeners[eventType] || []) l(e);
 		});
