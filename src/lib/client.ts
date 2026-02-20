@@ -6,25 +6,26 @@ import { events, type Events } from './sse-events';
 
 const [getSseClient, setSseClient] = createContext<{
 	lastEventId: number | undefined;
-	sseClient: SseClient | undefined;
 }>();
+
+let sseClient: SseClient | undefined = undefined;
 
 export function initSseClient(lastEventId: number | undefined) {
 	console.log('Initializing SSE client with lastEventId:', lastEventId, browser);
-	setSseClient({ lastEventId, sseClient: undefined });
+	setSseClient({ lastEventId });
 }
 
 export function getSseClientInBrowser() {
 	if (!browser) throw new Error('getSseClientInBrowser called but not in a browser environment');
 
-	const { lastEventId, sseClient } = getSseClient();
-
 	if (sseClient) return sseClient;
 
-	const sseClientNew = new SseClient(lastEventId);
-	setSseClient({ lastEventId, sseClient: sseClientNew });
+	const { lastEventId } = getSseClient();
 
-	return sseClientNew;
+	sseClient = new SseClient(lastEventId);
+	setSseClient({ lastEventId });
+
+	return sseClient;
 }
 
 type EventEnvelope<T extends keyof Events> = {
