@@ -41,10 +41,6 @@
 	});
 
 	$effect(() => {
-		$inspect.trace();
-		chatId; // re-run the effect when the user navigates to a different chat
-		// console.log('Setting up SSE subscription for chat with id', chatId);
-
 		const { unsubsribe } = untrack(() =>
 			subscribe({
 				eventType: 'customError',
