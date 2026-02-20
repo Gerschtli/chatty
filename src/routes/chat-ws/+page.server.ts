@@ -30,6 +30,7 @@ export const actions = {
 
 		const message = {
 			id: randomUUID(),
+			chatId: 1,
 			userId: user.id,
 			content,
 			createdAt: new Date()

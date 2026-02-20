@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 	import Chat from '$lib/Chat.svelte';
 	import { type ConnectionStatus, getSseClientInBrowser, subscribe } from '$lib/client';
 	import type { Message } from '$lib/sse-events';
@@ -19,7 +20,9 @@
 	});
 
 	$effect(() => {
-		chatId; // re-run the effect when the user navigates to a different chat
+		// re-run the effect when the user navigates to a different chat
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		chatId;
 		// console.log('Setting up SSE subscription for chat with id', chatId);
 
 		messages = untrack(() => data.chat.messages);
@@ -56,11 +59,11 @@
 	});
 </script>
 
-<a href="/chat/1">1</a>
-<a href="/chat/2">2</a>
+<a href={resolve('/(app)/chat/[slug]', { slug: '1' })}>1</a>
+<a href={resolve('/(app)/chat/[slug]', { slug: '2' })}>2</a>
 
 <div class="m-4 flex items-center gap-4">
-	<a href="/" class="btn btn-primary">Home</a>
+	<a href={resolve('/')} class="btn btn-primary">Home</a>
 	{#if data.chat.members.some((member) => member.user.id === data.userId)}
 		<form action="?/leaveChat" method="POST" use:enhance>
 			<input type="hidden" name="chatId" value={data.chat.id} />

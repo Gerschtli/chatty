@@ -4,7 +4,6 @@
 
 	let { children, data } = $props();
 
-	// svelte-ignore state_referenced_locally
 	initSseClient(untrack(() => data.lastEventId));
 
 	// ensures that the SSE connection is closed when the user navigates away from the (app) layout (e.g. to the login page).
