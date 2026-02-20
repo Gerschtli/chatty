@@ -24,15 +24,18 @@
 
 		messages = untrack(() => data.chat.messages);
 
-		const { unsubsribe } = subscribe({
-			lastEventId: untrack(() => data.lastEventId),
-			handleEvent(payload, id) {
-				console.log(`Handling SSE data for event type messageSent:`, id);
-				if (payload.chatId === chatId) {
-					untrack(() => messages).push(payload);
+		const { unsubsribe } = untrack(() =>
+			subscribe({
+				eventType: 'messageSent',
+				lastEventId: data.lastEventId,
+				handleEvent(payload, id) {
+					console.log(`Handling SSE data for event type messageSent:`, id);
+					if (payload.chatId === chatId) {
+						messages.push(payload);
+					}
 				}
-			}
-		});
+			})
+		);
 
 		return () => unsubsribe();
 	});
