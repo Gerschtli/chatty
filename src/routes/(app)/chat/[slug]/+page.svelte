@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Chat from '$lib/Chat.svelte';
-	import { subscribe } from '$lib/client';
+	import { type ConnectionStatus, getSseClientInBrowser, subscribe } from '$lib/client';
 	import type { Message } from '$lib/sse-events';
 	import { untrack } from 'svelte';
 
@@ -9,6 +9,14 @@
 
 	let chatId = $derived(data.chat.id);
 	let messages = $state<Message[]>([]);
+	let connectionStatus = $state<ConnectionStatus>();
+
+	$effect(() => {
+		// TODO: use reactive statements for this
+		getSseClientInBrowser().subscribeConnectionStatus((status) => {
+			untrack(() => (connectionStatus = status));
+		});
+	});
 
 	$effect(() => {
 		chatId; // re-run the effect when the user navigates to a different chat
@@ -58,4 +66,4 @@
 	</p>
 </div>
 
-<Chat connectionStatus={undefined} {messages} userId={data.userId} />
+<Chat {connectionStatus} {messages} userId={data.userId} />

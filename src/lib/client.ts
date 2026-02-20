@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import * as devalue from 'devalue';
 import { createContext } from 'svelte';
+import { config } from './config';
 import { events, type Events } from './sse-events';
 
 const [getSseClient, setSseClient] = createContext<{
@@ -26,8 +27,15 @@ export function getSseClientInBrowser() {
 	return sseClientNew;
 }
 
+export type ConnectionStatus = 'connecting' | 'connected' | 'stale' | 'closed';
+
 export class SseClient {
 	#eventSource: EventSource;
+
+	#connectionStatus: ConnectionStatus = 'connecting';
+	#connectionStatusListeners = new Set<(status: ConnectionStatus) => void>();
+	#staleTimeout: NodeJS.Timeout | undefined = undefined;
+
 	#messages: { id: number; payload: Events['messageSent'] }[] = [];
 	#listeners = new Set<(msg: { id: number; payload: Events['messageSent'] }) => void>();
 
@@ -35,6 +43,9 @@ export class SseClient {
 		console.log('Creating new SseClient with lastEventId:', lastEventId);
 		this.#eventSource = new EventSource(this.#buildSseUrl(lastEventId));
 
+		this.#setupLifecycleHandlers();
+
+		// TODO: support multiple event types
 		const eventType = 'messageSent';
 		this.#eventSource.addEventListener(eventType, (event: MessageEvent<string>) => {
 			const devalued = devalue.parse(event.data);
@@ -48,6 +59,57 @@ export class SseClient {
 
 			for (const l of this.#listeners) l(e);
 		});
+	}
+
+	#buildSseUrl(lastEventId: number | undefined) {
+		const url = new URL(`/sse`, window.location.href);
+		if (lastEventId !== undefined) {
+			url.searchParams.append('lastEventId', String(lastEventId));
+		}
+
+		return url.toString();
+	}
+
+	#setupLifecycleHandlers() {
+		this.#eventSource.onopen = () => this.#updateConnectionStatus('connected');
+
+		this.#eventSource.onerror = (event) => {
+			if (this.#eventSource.readyState === EventSource.CLOSED) {
+				this.#updateConnectionStatus('closed');
+			} else if (this.#eventSource.readyState === EventSource.CONNECTING) {
+				this.#updateConnectionStatus('connecting');
+			}
+
+			console.log(`SSE connection error: ${JSON.stringify(event)}`);
+		};
+
+		this.#eventSource.addEventListener('ping', () => this.#restartStaleTimeout());
+		this.#restartStaleTimeout();
+	}
+
+	#restartStaleTimeout() {
+		clearTimeout(this.#staleTimeout);
+
+		if (this.#connectionStatus === 'stale') {
+			this.#updateConnectionStatus('connected');
+		}
+
+		this.#staleTimeout = setTimeout(() => {
+			if (this.#connectionStatus === 'connected') {
+				this.#updateConnectionStatus('stale');
+			}
+		}, config.client.connectionStaleTimeoutMs);
+	}
+
+	#updateConnectionStatus(status: ConnectionStatus) {
+		this.#connectionStatus = status;
+		for (const l of this.#connectionStatusListeners) l(status);
+	}
+
+	subscribeConnectionStatus(fn: (status: ConnectionStatus) => void) {
+		this.#connectionStatusListeners.add(fn);
+
+		return () => this.#connectionStatusListeners.delete(fn);
 	}
 
 	replayAfter(lastId: number | undefined) {
@@ -68,23 +130,14 @@ export class SseClient {
 		console.log('Closing SSE connection');
 		this.#eventSource.close();
 	}
-
-	#buildSseUrl(lastEventId: number | undefined) {
-		const url = new URL(`/sse`, window.location.href);
-		if (lastEventId !== undefined) {
-			url.searchParams.append('lastEventId', String(lastEventId));
-		}
-
-		return url.toString();
-	}
 }
 
-type CatchupOpts = {
+type SubscribeOptions = {
 	lastEventId: number | undefined;
 	handleEvent: (msg: Events['messageSent'], id: number) => void;
 };
 
-export function subscribe({ lastEventId, handleEvent }: CatchupOpts) {
+export function subscribe({ lastEventId, handleEvent }: SubscribeOptions) {
 	console.log('Starting catchup with lastEventId:', lastEventId);
 
 	const sseClient = getSseClientInBrowser();
