@@ -52,7 +52,7 @@ export class Subscriber {
 			);
 
 			this.#intervalPing = setInterval(
-				() => controller.enqueue(this.#convertEventToPayload({ type: 'ping', data: '-1' })), // -1 == undefined in devalue
+				() => controller.enqueue(this.#convertEventToPayload({ type: 'ping', data: '' })),
 				config.server.pingSendingIntervalMs
 			);
 

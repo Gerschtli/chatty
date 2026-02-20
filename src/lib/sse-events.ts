@@ -11,7 +11,6 @@ export const events = {
 		content: z.string(),
 		createdAt: z.date()
 	}),
-	ping: z.undefined(),
 	error: z.literal('error')
 };
 
