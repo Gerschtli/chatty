@@ -43,7 +43,7 @@
 			subscribe({
 				eventType: 'customError',
 				lastEventId: data.lastEventId,
-				handleEvent(payload, id) {
+				handleEvent(_, id) {
 					console.log(`Handling SSE data for event type customError:`, id);
 					throw new Error('A custom error occurred in the SSE connection');
 				}

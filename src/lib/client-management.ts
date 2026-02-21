@@ -2,9 +2,8 @@ import { browser } from '$app/environment';
 import { createContext } from 'svelte';
 import { SseClient } from './client.svelte';
 
-const [getSseClient, setSseClient] = createContext<{
-	lastEventId: number | undefined;
-}>();
+// TODO: either use context or a singleton, but not both
+const [getSseClient, setSseClient] = createContext<{ lastEventId: number | undefined }>();
 
 let sseClient: SseClient | undefined = undefined;
 
@@ -14,6 +13,7 @@ export function initSseClient(lastEventId: number | undefined) {
 }
 
 export function getSseClientInBrowser() {
+	// TODO: is this the best way to implement this? maybe just return undefined
 	if (!browser) throw new Error('getSseClientInBrowser called but not in a browser environment');
 
 	if (sseClient) return sseClient;
