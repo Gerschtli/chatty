@@ -1,4 +1,5 @@
-import { redirect, type Socket } from '@sveltejs/kit';
+import { redirect, type Peer, type Socket } from '@sveltejs/kit';
+import * as devalue from 'devalue';
 
 export const socket: Socket = {
 	upgrade({ context, locals }) {
@@ -11,26 +12,30 @@ export const socket: Socket = {
 
 	open(peer) {
 		console.log(`[ws] opened connection with peer ${peer}`, peer.context);
-		// Send welcome to the new client
-		peer.send(`Welcome to the server!`);
 
-		// Join new client to the "chat" channel
+		peer.send(stringify(`Welcome to the server!`, 'system'));
+
 		peer.subscribe(`chat`);
 
-		// Notify every other connected client
-		peer.publish(`chat`, `[system] ${peer} joined!`);
+		peer.publish(`chat`, stringify(`${peer} joined!`, 'system'));
 	},
 
 	message(peer, message) {
-		console.log(`[ws] received message from peer ${peer}`, `:`, message.text());
+		console.log(`[ws] received message from peer ${peer}`, `:`, parse(message.text()));
 
-		// The server re-broadcasts incoming messages to everyone
-		peer.publish(`chat`, `[${peer}] ${message}`);
+		peer.publish(`chat`, stringify(parse(message.text()).message, peer));
+
+		console.log(`current peers:`);
+		for (const element of peer.peers) {
+			console.log(`- ${element}:`, element.context);
+		}
 	},
 
 	close(peer) {
 		console.log(`[ws] closed connection with peer ${peer}`);
-		peer.publish(`chat`, `[system] ${peer} has left the chat!`);
+
+		peer.publish(`chat`, stringify(`${peer} has left the chat!`, 'system'));
+
 		peer.unsubscribe(`chat`);
 	},
 
@@ -38,3 +43,11 @@ export const socket: Socket = {
 		console.log(`[ws] error with peer ${peer}`, error);
 	},
 };
+
+function stringify(message: string, from: Peer | 'system') {
+	return devalue.stringify({ message, from: from === 'system' ? from : from.id });
+}
+
+function parse(data: string) {
+	return devalue.parse(data);
+}
