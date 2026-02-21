@@ -1,19 +1,27 @@
 import { browser } from '$app/environment';
+import { createContext } from 'svelte';
 import { SseClient } from './client.svelte';
 
-// TODO: is this global state the best way?
-let lastEventId: number | undefined = undefined;
-let sseClient: SseClient | undefined = undefined;
+const [get, set] = createContext<{
+	lastEventId: number | undefined;
+	sseClient: SseClient | undefined;
+}>();
 
-export function initSseClient(lastEventId_: number | undefined) {
-	console.log('Initializing SSE client with lastEventId:', lastEventId_, browser);
-	lastEventId = lastEventId_;
+export function initSseClient(lastEventId: number | undefined) {
+	console.log('Initializing SSE client with lastEventId:', lastEventId, browser);
+
+	set({ lastEventId, sseClient: undefined });
 }
 
 export function getSseClient() {
 	if (!browser) return undefined;
 
-	if (!sseClient) sseClient = new SseClient(lastEventId);
+	const { lastEventId, sseClient } = get();
 
-	return sseClient;
+	if (sseClient) return sseClient;
+
+	const newSseClient = new SseClient(lastEventId);
+	set({ lastEventId, sseClient: newSseClient });
+
+	return newSseClient;
 }
