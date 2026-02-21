@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { createContext } from 'svelte';
-import { SseClient } from './client';
+import { SseClient } from './client.svelte';
 
 const [getSseClient, setSseClient] = createContext<{
 	lastEventId: number | undefined;

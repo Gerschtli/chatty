@@ -1,4 +1,5 @@
 import * as devalue from 'devalue';
+import { SvelteSet, SvelteURL } from 'svelte/reactivity';
 import { getSseClientInBrowser } from './client-management';
 import { config } from './config';
 import { events, type Events } from './sse-events';
@@ -8,13 +9,12 @@ type EventEnvelope<T extends keyof Events> = {
 	payload: Events[T];
 };
 
-export type ConnectionStatus = 'connecting' | 'connected' | 'stale' | 'closed';
+type ConnectionStatus = 'connecting' | 'connected' | 'stale' | 'closed';
 
 export class SseClient {
 	#eventSource: EventSource;
 
-	#connectionStatus: ConnectionStatus = 'connecting';
-	#connectionStatusListeners = new Set<(status: ConnectionStatus) => void>();
+	#connectionStatus: ConnectionStatus = $state('connecting');
 	#staleTimeout: NodeJS.Timeout | undefined = undefined;
 
 	#events: { [T in keyof Events]?: EventEnvelope<T>[] } = {};
@@ -35,7 +35,7 @@ export class SseClient {
 	}
 
 	#buildSseUrl(lastEventId: number | undefined) {
-		const url = new URL(`/sse`, window.location.href);
+		const url = new SvelteURL(`/sse`, window.location.href);
 		if (lastEventId !== undefined) {
 			url.searchParams.append('lastEventId', String(lastEventId));
 		}
@@ -44,14 +44,17 @@ export class SseClient {
 	}
 
 	#setupLifecycleHandlers() {
-		this.#eventSource.onopen = () => this.#updateConnectionStatus('connected');
+		this.#eventSource.onopen = () => {
+			this.#connectionStatus = 'connected';
+			console.log('SSE connection opened', { x: this.#connectionStatus });
+		};
 
 		// TODO: verify that this error handling logic works as expected in different scenarios
 		this.#eventSource.onerror = (event) => {
 			if (this.#eventSource.readyState === EventSource.CLOSED) {
-				this.#updateConnectionStatus('closed');
+				this.#connectionStatus = 'closed';
 			} else if (this.#eventSource.readyState === EventSource.CONNECTING) {
-				this.#updateConnectionStatus('connecting');
+				this.#connectionStatus = 'connecting';
 			}
 
 			console.log(`SSE connection error:`, this.#eventSource.readyState, event);
@@ -65,25 +68,18 @@ export class SseClient {
 		clearTimeout(this.#staleTimeout);
 
 		if (this.#connectionStatus === 'stale') {
-			this.#updateConnectionStatus('connected');
+			this.#connectionStatus = 'connected';
 		}
 
 		this.#staleTimeout = setTimeout(() => {
 			if (this.#connectionStatus === 'connected') {
-				this.#updateConnectionStatus('stale');
+				this.#connectionStatus = 'stale';
 			}
 		}, config.client.connectionStaleTimeoutMs);
 	}
 
-	#updateConnectionStatus(status: ConnectionStatus) {
-		this.#connectionStatus = status;
-		for (const l of this.#connectionStatusListeners) l(status);
-	}
-
-	subscribeConnectionStatus(fn: (status: ConnectionStatus) => void) {
-		this.#connectionStatusListeners.add(fn);
-
-		return () => this.#connectionStatusListeners.delete(fn);
+	get connectionStatus() {
+		return this.#connectionStatus;
 	}
 
 	#setupEventListener<T extends keyof Events>(eventType: T) {
@@ -127,7 +123,7 @@ export class SseClient {
 
 	subscribe<T extends keyof Events>(eventType: T, fn: (event: EventEnvelope<T>) => void) {
 		if (!this.#listeners[eventType]) {
-			this.#listeners[eventType] = new Set<never>();
+			this.#listeners[eventType] = new SvelteSet<never>();
 		}
 		this.#listeners[eventType]!.add(fn);
 
