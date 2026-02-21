@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Chat from '$lib/Chat.svelte';
-	import { sseClient } from '$lib/client.svelte';
+	import { sseClient } from '$lib/sse-client.svelte';
 	import type { Message } from '$lib/sse-events';
 	import { untrack } from 'svelte';
 

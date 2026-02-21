@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { sseClient } from '$lib/client.svelte';
+	import { sseClient } from '$lib/sse-client.svelte';
 	import { wsClient } from '$lib/ws-client.svelte';
 	import { untrack } from 'svelte';
 
