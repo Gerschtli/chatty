@@ -44,7 +44,7 @@
 				'animate-pulse bg-orange-500': connectionStatus === 'connecting',
 				'bg-green-500': connectionStatus === 'connected',
 				'animate-pulse bg-yellow-500': connectionStatus === 'stale',
-				'bg-red-500': connectionStatus === 'closed'
+				'bg-red-500': connectionStatus === 'closed',
 			}}
 		></span>
 		<span>{chatName}</span>
@@ -64,7 +64,7 @@
 						<img
 							alt="User avatar"
 							src="https://ui-avatars.com/api/?name={encodeURIComponent(
-								message.user.username
+								message.user.username,
 							)}&background=random"
 						/>
 					</div>

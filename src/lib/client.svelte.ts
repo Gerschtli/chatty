@@ -90,7 +90,7 @@ export class SseClient {
 			if (e.id <= (this.#lastEventId ?? 0)) {
 				console.warn(
 					`Received event with id ${e.id} which is not greater than lastEventId ${this.#lastEventId}. Ignoring event.`,
-					{ eventType, payload }
+					{ eventType, payload },
 				);
 				return;
 			}
@@ -143,7 +143,7 @@ export function subscribe<T extends keyof Events>({
 	sseClient,
 	eventType,
 	lastEventId,
-	handleEvent
+	handleEvent,
 }: SubscribeOptions<T>) {
 	console.log('Starting catchup with lastEventId:', lastEventId);
 

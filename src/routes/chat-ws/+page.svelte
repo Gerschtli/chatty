@@ -24,4 +24,4 @@
 	});
 </script>
 
-<Chat connectionStatus="closed" {messages} userId={data.userId} />
+<Chat connectionStatus="closed" {messages} userId={data.userId} chatName={'chat'} />

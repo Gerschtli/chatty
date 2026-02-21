@@ -8,7 +8,7 @@ export async function getLastEventId(userId: string) {
 	const lastEvent = await db.query.event.findFirst({
 		where: eq(table.event.userId, userId),
 		orderBy: desc(table.event.id),
-		columns: { id: true }
+		columns: { id: true },
 	});
 
 	return lastEvent?.id;
@@ -28,14 +28,14 @@ export async function loadEventsAfter(userId: string, lastEventId: string | null
 	return await db.query.event.findMany({
 		where,
 		orderBy: asc(table.event.id),
-		columns: { id: true, type: true, data: true }
+		columns: { id: true, type: true, data: true },
 	});
 }
 
 export async function persistEventForUserList<T extends keyof Events>(
 	userIds: string[],
 	type: T,
-	data: Events[T]
+	data: Events[T],
 ) {
 	for (const userId of userIds) {
 		await persistEvent(userId, type, data);
@@ -45,7 +45,7 @@ export async function persistEventForUserList<T extends keyof Events>(
 export async function persistEvent<T extends keyof Events>(
 	userId: string,
 	type: T,
-	data: Events[T]
+	data: Events[T],
 ) {
 	const [{ id: eventId }] = await db
 		.insert(table.event)
@@ -53,12 +53,12 @@ export async function persistEvent<T extends keyof Events>(
 			userId,
 			type,
 			data: devalue.stringify(data),
-			createdAt: new Date()
+			createdAt: new Date(),
 		})
 		.returning({ id: table.event.id });
 
 	await db.insert(table.outbox).values({
 		eventId,
-		createdAt: new Date()
+		createdAt: new Date(),
 	});
 }

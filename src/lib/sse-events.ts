@@ -7,12 +7,12 @@ export const events = {
 		chatId: z.int(),
 		userId: z.string(),
 		user: z.object({
-			username: z.string()
+			username: z.string(),
 		}),
 		content: z.string(),
-		createdAt: z.date()
+		createdAt: z.date(),
 	}),
-	customError: z.literal('error')
+	customError: z.literal('error'),
 };
 
 export type Events = {

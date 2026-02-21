@@ -11,9 +11,9 @@ export async function load() {
 		orderBy: (message, { asc }) => [asc(message.createdAt)],
 		with: {
 			user: {
-				columns: { username: true }
-			}
-		}
+				columns: { username: true },
+			},
+		},
 	});
 
 	return { messages, userId: user.id };
@@ -33,12 +33,12 @@ export const actions = {
 			chatId: 1,
 			userId: user.id,
 			content,
-			createdAt: new Date()
+			createdAt: new Date(),
 		};
 		await db.insert(table.message).values(message);
 
 		//broadcastEvent('message', { ...message, user: { username: user.username } });
-	}
+	},
 };
 function requireLogin() {
 	const { locals } = getRequestEvent();

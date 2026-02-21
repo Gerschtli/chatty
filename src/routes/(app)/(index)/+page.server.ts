@@ -11,9 +11,9 @@ export async function load() {
 	const chats = await db.query.chat.findMany({
 		with: {
 			members: {
-				where: eq(table.chatMember.userId, user.id)
-			}
-		}
+				where: eq(table.chatMember.userId, user.id),
+			},
+		},
 	});
 
 	return { chats };
@@ -46,7 +46,7 @@ export const actions = {
 
 		const chat = await db.query.chat.findFirst({
 			where: eq(table.chat.id, chatId),
-			columns: { name: true }
+			columns: { name: true },
 		});
 		if (!chat) error(404, 'Chat not found');
 
@@ -66,5 +66,5 @@ export const actions = {
 			.where(and(eq(table.chatMember.chatId, chatId), eq(table.chatMember.userId, user.id)));
 
 		redirect(303, '/');
-	}
+	},
 };

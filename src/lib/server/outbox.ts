@@ -23,7 +23,7 @@ async function outboxHandler() {
 		const outboxResults = await db.query.outbox.findMany({
 			orderBy: asc(table.outbox.id),
 			limit: config.outbox.batchSize,
-			with: { event: true }
+			with: { event: true },
 		});
 
 		if (outboxResults.length === 0) break;
@@ -33,7 +33,7 @@ async function outboxHandler() {
 				subscriber.push({
 					id: event.id,
 					type: event.type,
-					data: event.data
+					data: event.data,
 				});
 			}
 		}
@@ -41,8 +41,8 @@ async function outboxHandler() {
 		await db.delete(table.outbox).where(
 			inArray(
 				table.outbox.id,
-				outboxResults.map((r) => r.id)
-			)
+				outboxResults.map((r) => r.id),
+			),
 		);
 	}
 }

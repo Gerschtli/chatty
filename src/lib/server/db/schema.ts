@@ -5,7 +5,7 @@ export const user = sqliteTable('user', {
 	id: text('id').primaryKey(),
 	age: integer('age'),
 	username: text('username').notNull().unique(),
-	passwordHash: text('password_hash').notNull()
+	passwordHash: text('password_hash').notNull(),
 });
 
 export const session = sqliteTable('session', {
@@ -13,12 +13,12 @@ export const session = sqliteTable('session', {
 	userId: text('user_id')
 		.notNull()
 		.references(() => user.id),
-	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull()
+	expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
 });
 
 export const chat = sqliteTable('chat', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
-	name: text('name').notNull()
+	name: text('name').notNull(),
 });
 
 export const chatMember = sqliteTable('chat_member', {
@@ -28,7 +28,7 @@ export const chatMember = sqliteTable('chat_member', {
 		.references(() => chat.id),
 	userId: text('user_id')
 		.notNull()
-		.references(() => user.id)
+		.references(() => user.id),
 });
 
 export const message = sqliteTable('message', {
@@ -40,7 +40,7 @@ export const message = sqliteTable('message', {
 		.notNull()
 		.references(() => user.id),
 	content: text('content').notNull(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+	createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 export const event = sqliteTable('event', {
@@ -50,7 +50,7 @@ export const event = sqliteTable('event', {
 		.references(() => user.id),
 	type: text('type').notNull(),
 	data: text('data').notNull(),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+	createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 export const outbox = sqliteTable('outbox', {
@@ -58,7 +58,7 @@ export const outbox = sqliteTable('outbox', {
 	eventId: integer('event_id')
 		.notNull()
 		.references(() => event.id),
-	createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+	createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
 export type Session = typeof session.$inferSelect;
@@ -70,56 +70,56 @@ export type Message = typeof message.$inferSelect;
 export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),
 	messages: many(message),
-	chatMembers: many(chatMember, { relationName: 'chatMembers' })
+	chatMembers: many(chatMember, { relationName: 'chatMembers' }),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
 	user: one(user, {
 		fields: [session.userId],
-		references: [user.id]
-	})
+		references: [user.id],
+	}),
 }));
 
 export const chatRelations = relations(chat, ({ many }) => ({
 	members: many(chatMember, { relationName: 'members' }),
-	messages: many(message, { relationName: 'messages' })
+	messages: many(message, { relationName: 'messages' }),
 }));
 
 export const chatMembersRelations = relations(chatMember, ({ one }) => ({
 	chat: one(chat, {
 		fields: [chatMember.chatId],
 		references: [chat.id],
-		relationName: 'members'
+		relationName: 'members',
 	}),
 	user: one(user, {
 		fields: [chatMember.userId],
 		references: [user.id],
-		relationName: 'chatMembers'
-	})
+		relationName: 'chatMembers',
+	}),
 }));
 
 export const messageRelations = relations(message, ({ one }) => ({
 	chat: one(chat, {
 		fields: [message.chatId],
 		references: [chat.id],
-		relationName: 'messages'
+		relationName: 'messages',
 	}),
 	user: one(user, {
 		fields: [message.userId],
-		references: [user.id]
-	})
+		references: [user.id],
+	}),
 }));
 
 export const eventRelations = relations(event, ({ one }) => ({
 	user: one(user, {
 		fields: [event.userId],
-		references: [user.id]
-	})
+		references: [user.id],
+	}),
 }));
 
 export const outboxRelations = relations(outbox, ({ one }) => ({
 	event: one(event, {
 		fields: [outbox.eventId],
-		references: [event.id]
-	})
+		references: [event.id],
+	}),
 }));

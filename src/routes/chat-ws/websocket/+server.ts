@@ -20,5 +20,5 @@ export const socket: Socket = {
 	close(peer) {
 		peer.publish('chat', `[system] ${peer} has left the chat!`);
 		peer.unsubscribe('chat');
-	}
+	},
 };

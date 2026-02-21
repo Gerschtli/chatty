@@ -21,7 +21,7 @@ export class Subscriber {
 		this.id = randomUUID();
 		this.#stream = new Readable({
 			objectMode: true,
-			read() {}
+			read() {},
 		});
 	}
 
@@ -40,7 +40,7 @@ export class Subscriber {
 	buildWebStream() {
 		return new ReadableStream<string>({
 			start: (controller) => this.#startWebStream(controller),
-			cancel: (reason: unknown) => this.#close('cancel', reason)
+			cancel: (reason: unknown) => this.#close('cancel', reason),
 		});
 	}
 
@@ -48,12 +48,12 @@ export class Subscriber {
 		try {
 			this.#log(`running start for subscriber ${this.id}`);
 			controller.enqueue(
-				`: connected\nretry: ${config.server.clientReconnectRetryIntervalsMs}\n\n`
+				`: connected\nretry: ${config.server.clientReconnectRetryIntervalsMs}\n\n`,
 			);
 
 			this.#intervalPing = setInterval(
 				() => controller.enqueue(this.#convertEventToPayload({ type: 'ping', data: '' })),
-				config.server.pingSendingIntervalMs
+				config.server.pingSendingIntervalMs,
 			);
 
 			this.#log('sending initial events...');

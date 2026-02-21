@@ -31,8 +31,8 @@
 					if (payload.chatId === chatId) {
 						messages.push(payload);
 					}
-				}
-			})
+				},
+			}),
 		);
 
 		return () => unsubsribe();
@@ -47,8 +47,8 @@
 				handleEvent(_, id) {
 					console.log(`Handling SSE data for event type customError:`, id);
 					throw new Error('A custom error occurred in the SSE connection');
-				}
-			})
+				},
+			}),
 		);
 
 		return () => unsubsribe();

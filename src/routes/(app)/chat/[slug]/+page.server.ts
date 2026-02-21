@@ -20,20 +20,20 @@ export async function load({ params }) {
 				columns: {},
 				with: {
 					user: {
-						columns: { id: true, username: true }
-					}
-				}
+						columns: { id: true, username: true },
+					},
+				},
 			},
 			messages: {
 				columns: { id: true, chatId: true, userId: true, content: true, createdAt: true },
 				orderBy: asc(table.message.createdAt),
 				with: {
 					user: {
-						columns: { username: true }
-					}
-				}
-			}
-		}
+						columns: { username: true },
+					},
+				},
+			},
+		},
 	});
 
 	if (!chat) error(404, 'Chat not found');
@@ -59,11 +59,11 @@ export const actions = {
 					columns: {},
 					with: {
 						user: {
-							columns: { id: true }
-						}
-					}
-				}
-			}
+							columns: { id: true },
+						},
+					},
+				},
+			},
 		});
 
 		if (!chat) error(404, 'Chat not found');
@@ -72,7 +72,7 @@ export const actions = {
 			await persistEventForUserList(
 				chat.members.map((m) => m.user.id),
 				'customError',
-				'error'
+				'error',
 			);
 
 			return;
@@ -83,14 +83,14 @@ export const actions = {
 			chatId,
 			userId: user.id,
 			content,
-			createdAt: new Date()
+			createdAt: new Date(),
 		};
 		await db.insert(table.message).values(message);
 
 		await persistEventForUserList(
 			chat.members.map((m) => m.user.id),
 			'messageSent',
-			{ ...message, user: { username: user.username } }
+			{ ...message, user: { username: user.username } },
 		);
 	},
 
@@ -102,7 +102,7 @@ export const actions = {
 
 		const chat = await db.query.chat.findFirst({
 			where: eq(table.chat.id, chatId),
-			columns: { name: true }
+			columns: { name: true },
 		});
 		if (!chat) error(404, 'Chat not found');
 
@@ -118,5 +118,5 @@ export const actions = {
 		await db
 			.delete(table.chatMember)
 			.where(and(eq(table.chatMember.chatId, chatId), eq(table.chatMember.userId, user.id)));
-	}
+	},
 };
