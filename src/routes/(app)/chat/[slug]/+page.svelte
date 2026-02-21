@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Chat from '$lib/Chat.svelte';
-	import { getSseClientInBrowser } from '$lib/client-management';
+	import { getSseClient } from '$lib/client-management';
 	import { subscribe } from '$lib/client.svelte';
 	import type { Message } from '$lib/sse-events';
 	import { untrack } from 'svelte';
@@ -12,7 +11,7 @@
 
 	const chatId = $derived(data.chat.id);
 	let messages = $state<Message[]>([]);
-	const sseClient = $derived(browser ? getSseClientInBrowser() : undefined);
+	const sseClient = $derived(getSseClient());
 
 	$effect(() => {
 		// re-run the effect when the user navigates to a different chat
@@ -24,6 +23,7 @@
 
 		const { unsubsribe } = untrack(() =>
 			subscribe({
+				sseClient: sseClient!,
 				eventType: 'messageSent',
 				lastEventId: data.lastEventId,
 				handleEvent(payload, id) {
@@ -41,6 +41,7 @@
 	$effect(() => {
 		const { unsubsribe } = untrack(() =>
 			subscribe({
+				sseClient: sseClient!,
 				eventType: 'customError',
 				lastEventId: data.lastEventId,
 				handleEvent(_, id) {

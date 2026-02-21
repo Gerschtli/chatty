@@ -1,27 +1,19 @@
 import { browser } from '$app/environment';
-import { createContext } from 'svelte';
 import { SseClient } from './client.svelte';
 
-// TODO: either use context or a singleton, but not both
-const [getSseClient, setSseClient] = createContext<{ lastEventId: number | undefined }>();
-
+// TODO: is this global state the best way?
+let lastEventId: number | undefined = undefined;
 let sseClient: SseClient | undefined = undefined;
 
-export function initSseClient(lastEventId: number | undefined) {
-	console.log('Initializing SSE client with lastEventId:', lastEventId, browser);
-	setSseClient({ lastEventId });
+export function initSseClient(lastEventId_: number | undefined) {
+	console.log('Initializing SSE client with lastEventId:', lastEventId_, browser);
+	lastEventId = lastEventId_;
 }
 
-export function getSseClientInBrowser() {
-	// TODO: is this the best way to implement this? maybe just return undefined
-	if (!browser) throw new Error('getSseClientInBrowser called but not in a browser environment');
+export function getSseClient() {
+	if (!browser) return undefined;
 
-	if (sseClient) return sseClient;
-
-	const { lastEventId } = getSseClient();
-
-	sseClient = new SseClient(lastEventId);
-	setSseClient({ lastEventId });
+	if (!sseClient) sseClient = new SseClient(lastEventId);
 
 	return sseClient;
 }

@@ -1,6 +1,5 @@
 import * as devalue from 'devalue';
 import { SvelteSet, SvelteURL } from 'svelte/reactivity';
-import { getSseClientInBrowser } from './client-management';
 import { config } from './config';
 import { events, type Events } from './sse-events';
 
@@ -137,19 +136,20 @@ export class SseClient {
 }
 
 type SubscribeOptions<T extends keyof Events> = {
+	sseClient: SseClient;
 	eventType: T;
 	lastEventId: number | undefined;
 	handleEvent: (msg: Events[T], id: number) => void;
 };
 
 export function subscribe<T extends keyof Events>({
+	sseClient,
 	eventType,
 	lastEventId,
 	handleEvent
 }: SubscribeOptions<T>) {
 	console.log('Starting catchup with lastEventId:', lastEventId);
 
-	const sseClient = getSseClientInBrowser();
 	const replay = sseClient.replayAfter(eventType, lastEventId);
 
 	for (const ev of replay) {
