@@ -16,8 +16,8 @@ export async function startOutboxWorker() {
 
 		try {
 			await sleep(config.outbox.idleTimeoutMs);
-		} catch {
-			continue;
+		} catch (e) {
+			console.error('error occurred during sleep in outbox handler', e);
 		}
 	}
 }
