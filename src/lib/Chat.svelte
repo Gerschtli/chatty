@@ -5,7 +5,7 @@
 	import type { Message } from './sse-events';
 
 	interface Props {
-		connectionStatus: 'connecting' | 'connected' | 'stale' | 'closed' | undefined;
+		connectionStatus: 'initializing' | 'connecting' | 'connected' | 'stale' | 'closed';
 		messages: Message[];
 		userId: string;
 		chatName: string;
@@ -39,19 +39,20 @@
 <div class="mx-6 mt-4 flex items-center justify-between gap-2">
 	<div class="flex items-center gap-2 text-lg font-semibold">
 		<span
-			class={{
-				'inline-block size-4 rounded-full': true,
-				'animate-pulse bg-orange-500': connectionStatus === 'connecting',
-				'bg-green-500': connectionStatus === 'connected',
-				'animate-pulse bg-yellow-500': connectionStatus === 'stale',
-				'bg-red-500': connectionStatus === 'closed',
-			}}
+			class={[
+				'inline-block size-4 rounded-full',
+				connectionStatus === 'initializing' && 'animate-pulse bg-orange-500',
+				connectionStatus === 'connecting' && 'animate-pulse bg-orange-500',
+				connectionStatus === 'connected' && 'bg-green-500',
+				connectionStatus === 'stale' && 'animate-pulse bg-yellow-500',
+				connectionStatus === 'closed' && 'bg-red-500',
+			]}
 		></span>
 		<span>{chatName}</span>
 	</div>
 	<div class="text-xs">
 		<span class="text-slate-400">status:</span>
-		<span> {connectionStatus ?? 'connecting'}</span>
+		<span> {connectionStatus}</span>
 	</div>
 </div>
 

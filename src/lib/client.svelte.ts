@@ -1,5 +1,4 @@
 import * as devalue from 'devalue';
-import { SvelteSet, SvelteURL } from 'svelte/reactivity';
 import { config } from './config';
 import { events, type Events } from './sse-events';
 
@@ -8,12 +7,18 @@ type EventEnvelope<T extends keyof Events> = {
 	payload: Events[T];
 };
 
-type ConnectionStatus = 'connecting' | 'connected' | 'stale' | 'closed';
+type ConnectionStatus = 'initializing' | 'connecting' | 'connected' | 'stale' | 'closed';
 
-export class SseClient {
-	#eventSource: EventSource;
+type SubscribeOptions<T extends keyof Events> = {
+	eventType: T;
+	lastEventId: number | undefined;
+	handleEvent: (msg: Events[T], id: number) => void;
+};
 
-	#connectionStatus: ConnectionStatus = $state('connecting');
+class SseClient {
+	#eventSource: EventSource | undefined = undefined;
+
+	#connectionStatus: ConnectionStatus = $state('initializing');
 	#staleTimeout: NodeJS.Timeout | undefined = undefined;
 
 	#events: { [T in keyof Events]?: EventEnvelope<T>[] } = {};
@@ -21,20 +26,24 @@ export class SseClient {
 
 	#lastEventId: number | undefined;
 
-	constructor(lastEventId: number | undefined) {
+	connect(lastEventId: number | undefined) {
+		if (this.#connectionStatus !== 'initializing') return;
+
+		this.#connectionStatus = 'connecting';
+
 		console.log('Creating new SseClient with lastEventId:', lastEventId);
 		this.#lastEventId = lastEventId;
 		this.#eventSource = new EventSource(this.#buildSseUrl(lastEventId));
 
-		this.#setupLifecycleHandlers();
+		this.#setupLifecycleHandlers(this.#eventSource);
 
 		for (const eventType of Object.keys(events)) {
-			this.#setupEventListener(eventType as keyof Events);
+			this.#setupEventListener(this.#eventSource, eventType as keyof Events);
 		}
 	}
 
 	#buildSseUrl(lastEventId: number | undefined) {
-		const url = new SvelteURL(`/sse`, window.location.href);
+		const url = new URL(`/sse`, window.location.href);
 		if (lastEventId !== undefined) {
 			url.searchParams.append('lastEventId', String(lastEventId));
 		}
@@ -42,20 +51,20 @@ export class SseClient {
 		return url.toString();
 	}
 
-	#setupLifecycleHandlers() {
-		this.#eventSource.onopen = () => (this.#connectionStatus = 'connected');
+	#setupLifecycleHandlers(eventSource: EventSource) {
+		eventSource.onopen = () => (this.#connectionStatus = 'connected');
 
-		this.#eventSource.onerror = (event) => {
-			if (this.#eventSource.readyState === EventSource.CLOSED) {
+		eventSource.onerror = (event) => {
+			if (eventSource.readyState === EventSource.CLOSED) {
 				this.#connectionStatus = 'closed';
-			} else if (this.#eventSource.readyState === EventSource.CONNECTING) {
+			} else if (eventSource.readyState === EventSource.CONNECTING) {
 				this.#connectionStatus = 'connecting';
 			}
 
-			console.log(`SSE connection error:`, this.#eventSource.readyState, event);
+			console.log(`SSE connection error:`, eventSource.readyState, event);
 		};
 
-		this.#eventSource.addEventListener('ping', () => this.#restartStaleTimeout());
+		eventSource.addEventListener('ping', () => this.#restartStaleTimeout());
 		this.#restartStaleTimeout();
 	}
 
@@ -77,9 +86,9 @@ export class SseClient {
 		return this.#connectionStatus;
 	}
 
-	#setupEventListener<T extends keyof Events>(eventType: T) {
+	#setupEventListener<T extends keyof Events>(eventSource: EventSource, eventType: T) {
 		this.#events[eventType] = [];
-		this.#eventSource.addEventListener(eventType, (event: MessageEvent<string>) => {
+		eventSource.addEventListener(eventType, (event: MessageEvent<string>) => {
 			const devalued = devalue.parse(event.data);
 			const payload = events[eventType].parse(devalued) as Events[T];
 
@@ -105,7 +114,27 @@ export class SseClient {
 		});
 	}
 
-	replayAfter<T extends keyof Events>(eventType: T, lastEventId: number | undefined) {
+	subscribe<T extends keyof Events>({ eventType, lastEventId, handleEvent }: SubscribeOptions<T>) {
+		console.log('Starting catchup with lastEventId:', lastEventId);
+
+		this.connect(lastEventId);
+
+		const replay = this.#replayAfter(eventType, lastEventId);
+
+		for (const ev of replay) {
+			// console.log(`Replaying event with id ${ev.id} and payload:`, ev.payload);
+			handleEvent(ev.payload, ev.id);
+		}
+
+		const unsubsribe = this.#subscribe(eventType, (ev) => {
+			// console.log(`Received live event with id ${ev.id} and payload:`, ev.payload);
+			handleEvent(ev.payload, ev.id);
+		});
+
+		return { unsubsribe };
+	}
+
+	#replayAfter<T extends keyof Events>(eventType: T, lastEventId: number | undefined) {
 		// console.log('Fetching events to replay after id', lastId, 'Current messages:', this.#messages);
 
 		const events = this.#events[eventType];
@@ -116,9 +145,9 @@ export class SseClient {
 		return events.filter((e) => e.id > lastEventId);
 	}
 
-	subscribe<T extends keyof Events>(eventType: T, fn: (event: EventEnvelope<T>) => void) {
+	#subscribe<T extends keyof Events>(eventType: T, fn: (event: EventEnvelope<T>) => void) {
 		if (!this.#listeners[eventType]) {
-			this.#listeners[eventType] = new SvelteSet<never>();
+			this.#listeners[eventType] = new Set<never>();
 		}
 		this.#listeners[eventType]!.add(fn);
 
@@ -126,37 +155,21 @@ export class SseClient {
 	}
 
 	close() {
+		if (this.#connectionStatus !== 'initializing') return;
+
 		console.log('Closing SSE connection');
-		this.#eventSource.close();
+		this.#eventSource?.close();
+		this.#eventSource = undefined;
+
+		this.#connectionStatus = 'initializing';
+		clearTimeout(this.#staleTimeout);
+		this.#staleTimeout = undefined;
+
+		this.#events = {};
+		this.#listeners = {};
+
+		this.#lastEventId = undefined;
 	}
 }
 
-type SubscribeOptions<T extends keyof Events> = {
-	sseClient: SseClient;
-	eventType: T;
-	lastEventId: number | undefined;
-	handleEvent: (msg: Events[T], id: number) => void;
-};
-
-export function subscribe<T extends keyof Events>({
-	sseClient,
-	eventType,
-	lastEventId,
-	handleEvent,
-}: SubscribeOptions<T>) {
-	console.log('Starting catchup with lastEventId:', lastEventId);
-
-	const replay = sseClient.replayAfter(eventType, lastEventId);
-
-	for (const ev of replay) {
-		// console.log(`Replaying event with id ${ev.id} and payload:`, ev.payload);
-		handleEvent(ev.payload, ev.id);
-	}
-
-	const unsubsribe = sseClient.subscribe(eventType, (ev) => {
-		// console.log(`Received live event with id ${ev.id} and payload:`, ev.payload);
-		handleEvent(ev.payload, ev.id);
-	});
-
-	return { unsubsribe };
-}
+export const sseClient = new SseClient();

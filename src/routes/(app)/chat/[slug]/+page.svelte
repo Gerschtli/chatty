@@ -2,8 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Chat from '$lib/Chat.svelte';
-	import { getSseClient } from '$lib/client-management';
-	import { subscribe } from '$lib/client.svelte';
+	import { sseClient } from '$lib/client.svelte';
 	import type { Message } from '$lib/sse-events';
 	import { untrack } from 'svelte';
 
@@ -11,7 +10,6 @@
 
 	const chatId = $derived(data.chat.id);
 	let messages = $state<Message[]>([]);
-	const sseClient = $derived(getSseClient());
 
 	$effect(() => {
 		// re-run the effect when the user navigates to a different chat
@@ -22,8 +20,7 @@
 		messages = untrack(() => data.chat.messages);
 
 		const { unsubsribe } = untrack(() =>
-			subscribe({
-				sseClient: sseClient!,
+			sseClient.subscribe({
 				eventType: 'messageSent',
 				lastEventId: data.lastEventId,
 				handleEvent(payload, id) {
@@ -40,8 +37,7 @@
 
 	$effect(() => {
 		const { unsubsribe } = untrack(() =>
-			subscribe({
-				sseClient: sseClient!,
+			sseClient.subscribe({
 				eventType: 'customError',
 				lastEventId: data.lastEventId,
 				handleEvent(_, id) {
@@ -84,7 +80,7 @@
 </div>
 
 <Chat
-	connectionStatus={sseClient?.connectionStatus}
+	connectionStatus={sseClient.connectionStatus}
 	{messages}
 	userId={data.userId}
 	chatName={data.chat.name}
