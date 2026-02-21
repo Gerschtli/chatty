@@ -46,7 +46,7 @@ export class Subscriber {
 
 	async #startWebStream(controller: ReadableStreamDefaultController<string>) {
 		try {
-			console.info(`running start for subscriber ${this.id}`);
+			this.#log(`running start for subscriber ${this.id}`);
 			controller.enqueue(
 				`: connected\nretry: ${config.server.clientReconnectRetryIntervalsMs}\n\n`
 			);
@@ -56,15 +56,15 @@ export class Subscriber {
 				config.server.pingSendingIntervalMs
 			);
 
-			console.debug('sending initial events...');
+			this.#log('sending initial events...');
 			for (const event of this.#initialEvents) {
-				console.debug('sending previous event', event.id);
+				this.#log('sending previous event', event.id);
 				controller.enqueue(this.#convertEventToPayload(event));
 			}
 
-			console.debug('waiting for live events...');
+			this.#log('waiting for live events...');
 			for await (const event of this.#stream) {
-				console.debug('forwarding live event', event.id);
+				this.#log('forwarding live event', event.id);
 				controller.enqueue(this.#convertEventToPayload(event as Event));
 			}
 		} catch (e) {
@@ -74,7 +74,7 @@ export class Subscriber {
 	}
 
 	#close(type: 'error' | 'cancel', reason: unknown) {
-		console.error(`closing because of ${type}: ${reason}`);
+		this.#log(`closing because of ${type}: ${reason}`);
 
 		clearInterval(this.#intervalPing);
 
@@ -87,5 +87,9 @@ export class Subscriber {
 
 	#convertEventToPayload(event: Event) {
 		return `${event.id ? `id: ${event.id}\n` : ''}event: ${event.type}\ndata: ${event.data}\n\n`;
+	}
+
+	#log(...args: unknown[]) {
+		console.log(`[Subscriber ${this.id}]`, ...args);
 	}
 }

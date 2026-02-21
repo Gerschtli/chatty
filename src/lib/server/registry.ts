@@ -15,7 +15,3 @@ export function removeSubscriber(subscriber: Subscriber) {
 export function getSubscribers(userId: string) {
 	return subscribers.get(userId)?.values() ?? [];
 }
-
-export function getAllSubscribers() {
-	return subscribers.values().flatMap((m) => m.values());
-}
