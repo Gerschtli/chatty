@@ -82,10 +82,6 @@ class SseClient {
 		}, config.client.connectionStaleTimeoutMs);
 	}
 
-	get connectionStatus() {
-		return this.#connectionStatus;
-	}
-
 	#setupEventListener<T extends keyof Events>(eventSource: EventSource, eventType: T) {
 		this.#events[eventType] = [];
 		eventSource.addEventListener(eventType, (event: MessageEvent<string>) => {
@@ -169,6 +165,10 @@ class SseClient {
 		this.#listeners = {};
 
 		this.#lastEventId = undefined;
+	}
+
+	get connectionStatus() {
+		return this.#connectionStatus;
 	}
 }
 
