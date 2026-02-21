@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { afterNavigate } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import type { Message } from './sse-events';
 
 	interface Props {
@@ -12,19 +13,22 @@
 
 	let { connectionStatus, messages, userId, chatName }: Props = $props();
 
-	let scrollContainer: HTMLElement | null = null;
+	let scrollContainer = $state<HTMLElement>();
 
+	onMount(() => scrollToBottom('instant'));
 	afterNavigate(() => scrollToBottom('instant'));
 
-	$effect(() => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		messages.length;
-		// TODO: optimize: only scroll to bottom if the user is already near the bottom (idea: check scroll position before deciding whether to scroll)
-		scrollToBottom();
+	$effect.pre(() => {
+		if (!scrollContainer || messages.length === 0) return;
+
+		const scrollableDistance = scrollContainer.scrollHeight - scrollContainer.offsetHeight;
+		const autoscroll = scrollContainer.scrollTop > scrollableDistance - 100; // 100px threshold
+
+		if (autoscroll) queueMicrotask(() => scrollToBottom('smooth'));
 	});
 
 	function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
-		setTimeout(() => scrollContainer?.scrollTo({ top: scrollContainer.scrollHeight, behavior }), 0);
+		scrollContainer?.scrollTo({ top: scrollContainer.scrollHeight, behavior });
 	}
 
 	function formatTime(created: Date) {
