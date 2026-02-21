@@ -14,7 +14,11 @@ export async function startOutboxWorker() {
 			console.error('error occurred in outbox handler', e);
 		}
 
-		await sleep(config.outbox.idleTimeoutMs);
+		try {
+			await sleep(config.outbox.idleTimeoutMs);
+		} catch {
+			continue;
+		}
 	}
 }
 
