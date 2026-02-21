@@ -1,5 +1,4 @@
 import { config } from '$lib/config';
-import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
 export type Event = {
@@ -7,6 +6,8 @@ export type Event = {
 	type: string;
 	data: string;
 };
+
+let nextSubscriberId = 1;
 
 export class Subscriber {
 	readonly id: string;
@@ -18,7 +19,7 @@ export class Subscriber {
 	#initialEvents: Event[] = [];
 
 	constructor(readonly userId: string) {
-		this.id = randomUUID();
+		this.id = (nextSubscriberId++).toString().padStart(4, '0');
 		this.#stream = new Readable({
 			objectMode: true,
 			read() {},
@@ -46,7 +47,7 @@ export class Subscriber {
 
 	async #startWebStream(controller: ReadableStreamDefaultController<string>) {
 		try {
-			this.#log(`running start for subscriber ${this.id}`);
+			this.#log(`running start for subscriber`);
 			controller.enqueue(
 				`: connected\nretry: ${config.server.clientReconnectRetryIntervalsMs}\n\n`,
 			);
