@@ -52,9 +52,9 @@ class SseClient {
 	}
 
 	#setupLifecycleHandlers(eventSource: EventSource) {
-		eventSource.onopen = () => (this.#connectionStatus = 'connected');
+		eventSource.addEventListener('open', () => (this.#connectionStatus = 'connected'));
 
-		eventSource.onerror = (event) => {
+		eventSource.addEventListener('error', (event) => {
 			if (eventSource.readyState === EventSource.CLOSED) {
 				this.#connectionStatus = 'closed';
 			} else if (eventSource.readyState === EventSource.CONNECTING) {
@@ -62,7 +62,7 @@ class SseClient {
 			}
 
 			console.log(`SSE connection error:`, eventSource.readyState, event);
-		};
+		});
 
 		eventSource.addEventListener('ping', () => this.#restartStaleTimeout());
 		this.#restartStaleTimeout();
