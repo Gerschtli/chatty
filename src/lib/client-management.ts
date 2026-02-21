@@ -3,14 +3,12 @@ import { createContext } from 'svelte';
 import { SseClient } from './client.svelte';
 
 const [get, set] = createContext<{
-	lastEventId: number | undefined;
-	sseClient: SseClient | undefined;
+	lastEventId?: number;
+	sseClient?: SseClient;
 }>();
 
 export function initSseClient(lastEventId: number | undefined) {
-	console.log('Initializing SSE client with lastEventId:', lastEventId, browser);
-
-	set({ lastEventId, sseClient: undefined });
+	set({ lastEventId });
 }
 
 export function getSseClient() {
@@ -21,7 +19,7 @@ export function getSseClient() {
 	if (sseClient) return sseClient;
 
 	const newSseClient = new SseClient(lastEventId);
-	set({ lastEventId, sseClient: newSseClient });
+	set({ sseClient: newSseClient });
 
 	return newSseClient;
 }
