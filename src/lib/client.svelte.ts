@@ -45,7 +45,6 @@ export class SseClient {
 	#setupLifecycleHandlers() {
 		this.#eventSource.onopen = () => (this.#connectionStatus = 'connected');
 
-		// TODO: verify that this error handling logic works as expected in different scenarios
 		this.#eventSource.onerror = (event) => {
 			if (this.#eventSource.readyState === EventSource.CLOSED) {
 				this.#connectionStatus = 'closed';
