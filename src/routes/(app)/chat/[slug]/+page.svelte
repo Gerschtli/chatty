@@ -83,4 +83,9 @@
 	</p>
 </div>
 
-<Chat connectionStatus={sseClient?.connectionStatus} {messages} userId={data.userId} />
+<Chat
+	connectionStatus={sseClient?.connectionStatus}
+	{messages}
+	userId={data.userId}
+	chatName={data.chat.name}
+/>

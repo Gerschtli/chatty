@@ -7,9 +7,10 @@
 		connectionStatus: 'connecting' | 'connected' | 'stale' | 'closed' | undefined;
 		messages: Message[];
 		userId: string;
+		chatName: string;
 	}
 
-	let { connectionStatus, messages, userId }: Props = $props();
+	let { connectionStatus, messages, userId, chatName }: Props = $props();
 
 	let scrollContainer: HTMLElement | null = null;
 
@@ -31,9 +32,23 @@
 	}
 </script>
 
-<div class="mx-6 mt-2 text-right text-xs">
-	<span class="text-slate-400">status:</span>
-	{connectionStatus ?? 'connecting'}
+<div class="mx-6 mt-4 flex items-center justify-between gap-2">
+	<div class="flex items-center gap-2 text-lg font-semibold">
+		<span
+			class={{
+				'inline-block size-4 rounded-full': true,
+				'animate-pulse bg-orange-500': connectionStatus === 'connecting',
+				'bg-green-500': connectionStatus === 'connected',
+				'animate-pulse bg-yellow-500': connectionStatus === 'stale',
+				'bg-red-500': connectionStatus === 'closed'
+			}}
+		></span>
+		<span>{chatName}</span>
+	</div>
+	<div class="text-xs">
+		<span class="text-slate-400">status:</span>
+		<span> {connectionStatus ?? 'connecting'}</span>
+	</div>
 </div>
 
 <div class="m-4 flex h-100 flex-col justify-between rounded-lg border-2 border-slate-400">
