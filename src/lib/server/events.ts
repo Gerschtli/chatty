@@ -1,6 +1,6 @@
+import type { Events } from '$lib/events';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
-import type { Events } from '$lib/sse-events';
 import * as devalue from 'devalue';
 import { and, asc, desc, eq, gt, SQL } from 'drizzle-orm';
 

@@ -1,6 +1,6 @@
 import * as devalue from 'devalue';
 import { config } from './config';
-import { events, type Events } from './sse-events';
+import { events, type Events } from './events';
 
 type EventEnvelope<T extends keyof Events> = {
 	id: number;

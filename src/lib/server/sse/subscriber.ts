@@ -1,7 +1,7 @@
 import { config } from '$lib/config';
 import { Readable } from 'node:stream';
 
-export type Event = {
+type Event = {
 	id?: string | number;
 	type: string;
 	data: string;

@@ -1,7 +1,7 @@
 import { requireLogin } from '$lib/server/auth';
 import { loadEventsAfter } from '$lib/server/events';
-import { registerSubscriber, removeSubscriber } from '$lib/server/registry';
-import { Subscriber } from '$lib/server/sse';
+import { registerSubscriber, removeSubscriber } from '$lib/server/sse/registry';
+import { Subscriber } from '$lib/server/sse/subscriber';
 
 export async function GET({ request, url }) {
 	const user = requireLogin();

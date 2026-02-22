@@ -2,7 +2,7 @@ import { config } from '$lib/config';
 import * as table from '$lib/server/db/schema';
 import { asc, inArray } from 'drizzle-orm';
 import { db } from './db';
-import { getSubscribers } from './registry';
+import { getSubscribers } from './sse/registry';
 
 export async function startOutboxWorker() {
 	console.log('starting outbox handler');
@@ -33,6 +33,7 @@ async function outboxHandler() {
 		if (outboxResults.length === 0) break;
 
 		for (const { event } of outboxResults) {
+			// start SSE
 			for (const subscriber of getSubscribers(event.userId)) {
 				subscriber.push({
 					id: event.id,
@@ -40,6 +41,7 @@ async function outboxHandler() {
 					data: event.data,
 				});
 			}
+			// end SSE
 		}
 
 		await db.delete(table.outbox).where(

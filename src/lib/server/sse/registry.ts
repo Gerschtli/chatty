@@ -1,4 +1,4 @@
-import type { Subscriber } from './sse';
+import type { Subscriber } from './subscriber';
 
 const subscribers = new Map<string, Map<string, Subscriber>>();
 
