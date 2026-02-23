@@ -16,7 +16,7 @@
 	*/
 
 	$effect(() => {
-		untrack(() => wsClient.connect());
+		untrack(() => wsClient.connect(data.lastEventId));
 
 		return () => wsClient.close();
 	});

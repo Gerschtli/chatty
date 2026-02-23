@@ -1,4 +1,6 @@
 import * as devalue from 'devalue';
+import { config } from './config';
+import type { ClientMessages } from './ws-events';
 
 // TODO: handle (re-)connection with lastEventId replay
 // TODO: handle different message types (e.g. chat messages, system messages, etc.)
@@ -6,16 +8,21 @@ import * as devalue from 'devalue';
 class WebsocketClient {
 	#socket: WebSocket | null = null;
 
-	connect() {
+	connect(lastEventId: number | undefined) {
 		this.#socket = new WebSocket(new URL(`/ws`, window.location.href));
 
 		this.#socket.addEventListener('open', () => {
 			console.log('[ws-client] connection opened');
-			this.send('Hello, server!');
+			this.send('replay', { lastEventId });
 		});
 
 		this.#socket.addEventListener('message', (event) => {
-			console.log('[ws-client] received message:', devalue.parse(event.data));
+			const [type, idString, dataRaw] = event.data.split(config.ws.delimiter, 3);
+			const id = parseInt(idString);
+			console.log(
+				`[ws-client] received server message of type ${type} (id=${id}):`,
+				devalue.parse(dataRaw),
+			);
 		});
 
 		this.#socket.addEventListener('close', () => {
@@ -27,13 +34,13 @@ class WebsocketClient {
 		});
 	}
 
-	send(message: string) {
+	send<T extends keyof ClientMessages>(type: T, message: ClientMessages[T]) {
 		if (!this.#socket || this.#socket.readyState !== WebSocket.OPEN) {
 			console.warn('[ws-client] cannot send message, socket is not open');
 			return;
 		}
 
-		this.#socket.send(devalue.stringify({ message }));
+		this.#socket.send([type, devalue.stringify(message)].join(config.ws.delimiter));
 	}
 
 	close() {
