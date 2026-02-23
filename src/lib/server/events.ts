@@ -1,6 +1,6 @@
-import type { Events } from '$lib/events';
 import { db } from '$lib/server/db';
 import * as table from '$lib/server/db/schema';
+import type { Events } from '$lib/sse-events';
 import * as devalue from 'devalue';
 import { and, asc, desc, eq, gt, SQL } from 'drizzle-orm';
 
@@ -14,15 +14,12 @@ export async function getLastEventId(userId: string) {
 	return lastEvent?.id;
 }
 
-export async function loadEventsAfter(userId: string, lastEventId: string | null) {
+export async function loadEventsAfter(userId: string, lastEventId: number | null) {
 	console.log('loading events after:', lastEventId);
 
 	let where: SQL<unknown> | undefined = eq(table.event.userId, userId);
 	if (lastEventId) {
-		const lastEventIdNumber = parseInt(lastEventId);
-		if (!isNaN(lastEventIdNumber)) {
-			where = and(where, gt(table.event.id, lastEventIdNumber));
-		}
+		where = and(where, gt(table.event.id, lastEventId));
 	}
 
 	return await db.query.event.findMany({

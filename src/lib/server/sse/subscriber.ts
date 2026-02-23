@@ -2,7 +2,7 @@ import { config } from '$lib/config';
 import { Readable } from 'node:stream';
 
 type Event = {
-	id?: string | number;
+	id?: number;
 	type: string;
 	data: string;
 };

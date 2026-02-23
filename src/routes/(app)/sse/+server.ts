@@ -6,7 +6,7 @@ import { Subscriber } from '$lib/server/sse/subscriber';
 export async function GET({ request, url }) {
 	const user = requireLogin();
 
-	const lastEventId = request.headers.get('Last-Event-ID') ?? url.searchParams.get('lastEventId');
+	const lastEventId = determineLastEventId(request, url);
 
 	const subscriber = new Subscriber(user.id);
 	registerSubscriber(subscriber);
@@ -21,4 +21,12 @@ export async function GET({ request, url }) {
 			Connection: 'keep-alive',
 		},
 	});
+}
+
+function determineLastEventId(request: Request, url: URL) {
+	const stringValue = request.headers.get('Last-Event-ID') ?? url.searchParams.get('lastEventId');
+
+	if (stringValue === null) return null;
+
+	return parseInt(stringValue);
 }
