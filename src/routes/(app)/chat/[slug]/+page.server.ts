@@ -38,6 +38,7 @@ export async function load({ params }) {
 
 	if (!chat) error(404, 'Chat not found');
 
+	// TODO: use nullable for lastEventId
 	return { chat, userId: user.id, lastEventId };
 }
 

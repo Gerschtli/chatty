@@ -4,6 +4,7 @@
 	import Chat from '$lib/Chat.svelte';
 	import { sseClient } from '$lib/sse-client.svelte';
 	import type { Message } from '$lib/sse-events';
+	import { wsClient } from '$lib/ws-client.svelte';
 	import { untrack } from 'svelte';
 
 	const { data } = $props();
@@ -43,6 +44,45 @@
 				handleEvent(_, id) {
 					console.log(`Handling SSE data for event type customError:`, id);
 					throw new Error('A custom error occurred in the SSE connection');
+				},
+			}),
+		);
+
+		return () => unsubsribe();
+	});
+
+	$effect(() => {
+		// re-run the effect when the user navigates to a different chat
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		chatId;
+		// console.log('Setting up SSE subscription for chat with id', chatId);
+
+		messages = untrack(() => data.chat.messages);
+
+		const { unsubsribe } = untrack(() =>
+			wsClient.subscribe({
+				eventType: 'messageSent',
+				lastEventId: data.lastEventId,
+				handleEvent(payload, id) {
+					console.log(`Handling WS data for event type messageSent:`, id);
+					if (payload.chatId === chatId) {
+						messages.push(payload);
+					}
+				},
+			}),
+		);
+
+		return () => unsubsribe();
+	});
+
+	$effect(() => {
+		const { unsubsribe } = untrack(() =>
+			wsClient.subscribe({
+				eventType: 'customError',
+				lastEventId: data.lastEventId,
+				handleEvent(_, id) {
+					console.log(`Handling WS data for event type customError:`, id);
+					throw new Error('A custom error occurred in the WS connection');
 				},
 			}),
 		);

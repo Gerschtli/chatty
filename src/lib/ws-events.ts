@@ -19,6 +19,10 @@ export const clientMessages = {
 	replay: z.object({
 		lastEventId: z.int().optional(),
 	}),
+	messageSent: z.object({
+		chatId: z.int(),
+		content: z.string(),
+	}),
 };
 
 export type Events = {

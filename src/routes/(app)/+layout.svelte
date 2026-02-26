@@ -23,6 +23,6 @@
 </script>
 
 <input bind:value={message} />
-<button onclick={() => wsClient.send(message)}>Send</button>
+<button onclick={() => wsClient.send('messageSent', { chatId: 1, content: message })}>Send</button>
 
 {@render children()}

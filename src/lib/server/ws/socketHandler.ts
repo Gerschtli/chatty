@@ -1,5 +1,5 @@
 import { config } from '$lib/config';
-import { clientMessages } from '$lib/ws-events';
+import { clientMessages, type ClientMessages } from '$lib/ws-events';
 import type { Peer } from '@sveltejs/kit';
 import * as devalue from 'devalue';
 import { Readable } from 'node:stream';
@@ -10,6 +10,8 @@ type Event = {
 	type: string;
 	data: string;
 };
+
+const regex = new RegExp(`^([A-Za-z]+)${config.ws.delimiter}(.+)$`);
 
 let nextSocketHandlerId = 1;
 
@@ -26,14 +28,20 @@ export class SocketHandler {
 		});
 	}
 
-	onOpen() {
-		this.#log(`received open`);
+	onOpen(peer: Peer) {
+		console.log(`[ws] opened connection with peer ${peer}`);
 		// TODO: send initial message?
 		// TODO: init ping pong
 	}
 
 	async onClientMessage(peer: Peer, message: string) {
-		const [type, dataRaw] = message.split(config.ws.delimiter, 2);
+		const match = message.match(regex);
+		if (!match) {
+			this.#log(`received malformed message:`, message);
+			throw new Error(`malformed message: ${message}`);
+		}
+
+		const [_, type, dataRaw] = match;
 		this.#log(`received client message of type ${type}:`, devalue.parse(dataRaw));
 
 		// TODO: how to handle unknown types?
@@ -42,9 +50,23 @@ export class SocketHandler {
 		}
 
 		// TODO: how to handle validation errors?
-		const parsed = clientMessages[type].parse(devalue.parse(dataRaw));
+		switch (type) {
+			case 'replay': {
+				await this.#handleReplay(peer, clientMessages[type].parse(devalue.parse(dataRaw)));
+				break;
+			}
+			case 'messageSent': {
+				break;
+			}
+			default: {
+				const _exhaustiveCheck: never = type;
+				throw new Error(`unknown client message type: ${type}`);
+			}
+		}
+	}
 
-		const events = await loadEventsAfter(this.userId, parsed.lastEventId);
+	async #handleReplay(peer: Peer, message: ClientMessages['replay']) {
+		const events = await loadEventsAfter(this.userId, message.lastEventId ?? null);
 
 		this.#log('sending initial events...');
 		for (const event of events) {
