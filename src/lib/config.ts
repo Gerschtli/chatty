@@ -12,7 +12,4 @@ export const config = {
 		// needs to be high enough to store all events that could be emitted while the SSR is loading
 		maxStoredEventsPerType: 200,
 	},
-	ws: {
-		delimiter: ',',
-	},
 };

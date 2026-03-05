@@ -1,36 +1,42 @@
 import z from 'zod';
 
 // do not use these names: "message", "error", "ping", "open"
-export const events = {
-	messageSent: z.object({
-		id: z.string(),
-		chatId: z.int(),
-		userId: z.string(),
-		user: z.object({
-			username: z.string(),
+export const schemaServerMessage = z.discriminatedUnion('type', [
+	z.object({
+		type: z.literal('messageSent'),
+		id: z.int(),
+		data: z.object({
+			id: z.string(),
+			chatId: z.int(),
+			userId: z.string(),
+			user: z.object({
+				username: z.string(),
+			}),
+			content: z.string(),
+			createdAt: z.date(),
 		}),
-		content: z.string(),
-		createdAt: z.date(),
 	}),
-	customError: z.literal('error'),
-};
+	z.object({
+		type: z.literal('error'),
+		id: z.int(),
+		message: z.string(),
+	}),
+]);
 
-export const clientMessages = {
-	replay: z.object({
+export const schemaClientMessage = z.discriminatedUnion('type', [
+	z.object({
+		type: z.literal('replay'),
 		lastEventId: z.int().optional(),
 	}),
-	messageSent: z.object({
+	z.object({
+		type: z.literal('messageSent'),
 		chatId: z.int(),
 		content: z.string(),
 	}),
-};
+]);
 
-export type Events = {
-	[K in keyof typeof events]: z.infer<(typeof events)[K]>;
-};
+export type ServerMessage = z.infer<typeof schemaServerMessage>;
 
-export type ClientMessages = {
-	[K in keyof typeof clientMessages]: z.infer<(typeof clientMessages)[K]>;
-};
+export type ClientMessage = z.infer<typeof schemaClientMessage>;
 
-export type Message = Events['messageSent'];
+export type Message = Extract<ServerMessage, { type: 'messageSent' }>;

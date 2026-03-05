@@ -2,7 +2,7 @@ import * as devalue from 'devalue';
 import { config } from './config';
 import { events, type Events } from './sse-events';
 
-export type EventEnvelope<T extends keyof Events> = {
+type EventEnvelope<T extends keyof Events> = {
 	id: number;
 	payload: Events[T];
 };

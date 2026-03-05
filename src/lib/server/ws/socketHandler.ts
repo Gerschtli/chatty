@@ -1,5 +1,5 @@
 import { config } from '$lib/config';
-import { clientMessages, type ClientMessages } from '$lib/ws-events';
+import { schemaClientMessage, type ClientMessage } from '$lib/ws-events';
 import type { Peer } from '@sveltejs/kit';
 import * as devalue from 'devalue';
 import { Readable } from 'node:stream';
@@ -10,8 +10,6 @@ type Event = {
 	type: string;
 	data: string;
 };
-
-const regex = new RegExp(`^([A-Za-z]+)${config.ws.delimiter}(.+)$`);
 
 let nextSocketHandlerId = 1;
 
@@ -35,37 +33,26 @@ export class SocketHandler {
 	}
 
 	async onClientMessage(peer: Peer, message: string) {
-		const match = message.match(regex);
-		if (!match) {
-			this.#log(`received malformed message:`, message);
-			throw new Error(`malformed message: ${message}`);
-		}
-
-		const [_, type, dataRaw] = match;
-		this.#log(`received client message of type ${type}:`, devalue.parse(dataRaw));
-
-		// TODO: how to handle unknown types?
-		if (!this.#isClientMessageType(type)) {
-			throw new Error(`unknown type in client message: ${type}`);
-		}
-
 		// TODO: how to handle validation errors?
-		switch (type) {
+		const clientMessage = schemaClientMessage.parse(devalue.parse(message));
+		this.#log(`received client message of type ${clientMessage.type}:`, clientMessage);
+
+		switch (clientMessage.type) {
 			case 'replay': {
-				await this.#handleReplay(peer, clientMessages[type].parse(devalue.parse(dataRaw)));
+				await this.#handleReplay(peer, clientMessage);
 				break;
 			}
 			case 'messageSent': {
 				break;
 			}
 			default: {
-				const _exhaustiveCheck: never = type;
-				throw new Error(`unknown client message type: ${type}`);
+				const _exhaustiveCheck: never = clientMessage;
+				throw new Error(`unknown client message type: ${(clientMessage as ClientMessage).type}`);
 			}
 		}
 	}
 
-	async #handleReplay(peer: Peer, message: ClientMessages['replay']) {
+	async #handleReplay(peer: Peer, message: Extract<ClientMessage, { type: 'replay' }>) {
 		const events = await loadEventsAfter(this.userId, message.lastEventId ?? null);
 
 		this.#log('sending initial events...');
@@ -79,10 +66,6 @@ export class SocketHandler {
 			this.#log('forwarding live event', event.id);
 			peer.send(this.#convertEventToPayload(event as Event));
 		}
-	}
-
-	#isClientMessageType(type: string): type is keyof typeof clientMessages {
-		return type in clientMessages;
 	}
 
 	#convertEventToPayload(event: Event) {
