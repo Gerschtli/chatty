@@ -1,38 +1,27 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as devalue from 'devalue';
+import { serverMessageSchema, type Operations, type Request } from './ws-events';
 
-type Request = {
-	type: 'request';
-	id: string;
-	method: string;
-	params: any;
-};
-
-type Response = {
-	type: 'response';
-	id: string;
-	result?: any;
-	error?: any;
-};
-
-type Event = {
-	type: 'event';
-	eventType: string;
-	data: any;
-};
-
-type ConnectionStatus = 'initializing' | 'connecting' | 'connected' | 'stale' | 'disconnected';
-
-type Message = Request | Response | Event;
+export type ConnectionStatus =
+	| 'initializing'
+	| 'connecting'
+	| 'connected'
+	| 'stale'
+	| 'disconnected';
 
 class WSClient {
 	#socket: WebSocket | null = null;
 	#pendingRequests: Map<
-		string,
-		{ resolve: (value: any) => void; reject: (reason: any) => void; timeout: NodeJS.Timeout }
+		number,
+		{
+			resolve(value: unknown): void;
+			reject(reason: unknown): void;
+			timeout: NodeJS.Timeout;
+		}
 	> = new Map();
 	#eventListeners: Map<string, Set<(data: any) => void>> = new Map();
 	#connectionStatus: ConnectionStatus = $state('disconnected');
+	#nextRequestId = 0;
 
 	get connectionStatus() {
 		return this.#connectionStatus;
@@ -48,19 +37,19 @@ class WSClient {
 			this.#connectionStatus = 'connected';
 			console.log('[ws-client] connected');
 			// Send last_processed
-			this.sendRequest('last_processed', { messageId: lastMessageId || '0' }).catch(console.error);
+			//	this.sendRequest('last_processed', { messageId: lastMessageId || '0' }).catch(console.error);
 		};
 
 		this.#socket.onmessage = (event) => {
 			try {
-				const message: Message = devalue.parse(event.data);
+				const message = serverMessageSchema.parse(devalue.parse(event.data));
 				console.log('[ws-client] received:', message);
 
 				if (message.type === 'response') {
-					const pending = this.#pendingRequests.get(message.id);
+					const pending = this.#pendingRequests.get(message.requestId);
 					if (pending) {
 						clearTimeout(pending.timeout);
-						this.#pendingRequests.delete(message.id);
+						this.#pendingRequests.delete(message.requestId);
 						if (message.error) {
 							pending.reject(message.error);
 						} else {
@@ -94,16 +83,17 @@ class WSClient {
 		this.#connectionStatus = 'disconnected';
 	}
 
-	sendRequest(method: string, params: any): Promise<any> {
-		return new Promise((resolve, reject) => {
-			const id = Math.random().toString(36).substr(2, 9);
-			const request: Request = { type: 'request', id, method, params };
+	sendRequest<T extends keyof Operations>(method: T, params: Operations[T]['request']) {
+		return new Promise<Operations[T]['response']>((resolve, reject) => {
+			const id = this.#nextRequestId++;
+			const request = { type: 'request', id, method, params } satisfies Request<T>;
+			// TODO: queue if socket not open yet
 			this.#socket?.send(devalue.stringify(request));
 
 			const timeout = setTimeout(() => {
 				this.#pendingRequests.delete(id);
 				reject(new Error('Request timeout'));
-			}, 10000);
+			}, 10_000);
 
 			this.#pendingRequests.set(id, { resolve, reject, timeout });
 		});

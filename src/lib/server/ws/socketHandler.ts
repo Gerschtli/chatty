@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type ClientMessage } from '$lib/ws-events';
+import { requestSchema, type ClientMessage } from '$lib/ws-events';
 import type { Peer } from '@sveltejs/kit';
 import * as devalue from 'devalue';
 import { Readable } from 'node:stream';
@@ -35,7 +35,7 @@ export class SocketHandler {
 
 	async onClientMessage(peer: Peer, message: string) {
 		try {
-			const data = devalue.parse(message);
+			const data = requestSchema.parse(devalue.parse(message));
 			this.#log(`received client message:`, data);
 
 			if (data.type === 'request') {
