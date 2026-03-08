@@ -3,6 +3,7 @@ import * as table from '$lib/server/db/schema';
 import { asc, inArray } from 'drizzle-orm';
 import { db } from './db';
 import { getSubscribers } from './sse/registry';
+import { getSocketHandlers } from './ws/registry';
 
 export async function startOutboxWorker() {
 	console.log('starting outbox handler');
@@ -27,21 +28,34 @@ async function outboxHandler() {
 		const outboxResults = await db.query.outbox.findMany({
 			orderBy: asc(table.outbox.id),
 			limit: config.outbox.batchSize,
-			with: { event: true },
+			with: {
+				event: {
+					columns: {
+						id: true,
+						userId: true,
+						type: true,
+						data: true,
+					},
+				},
+			},
 		});
 
 		if (outboxResults.length === 0) break;
 
-		for (const { event } of outboxResults) {
+		for (const {
+			event: { userId, ...event },
+		} of outboxResults) {
 			// start SSE
-			for (const subscriber of getSubscribers(event.userId)) {
-				subscriber.push({
-					id: event.id,
-					type: event.type,
-					data: event.data,
-				});
+			for (const subscriber of getSubscribers(userId)) {
+				subscriber.push(event);
 			}
 			// end SSE
+
+			// start WS
+			for (const socketHandler of getSocketHandlers(userId)) {
+				socketHandler.push(event);
+			}
+			// end WS
 		}
 
 		await db.delete(table.outbox).where(
