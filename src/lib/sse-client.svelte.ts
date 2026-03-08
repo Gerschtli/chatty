@@ -43,7 +43,7 @@ class SseClient {
 	}
 
 	#buildSseUrl(lastEventId: number | undefined) {
-		const url = new URL(`/sse`, window.location.href);
+		const url = new URL(`/base-sse/sse`, window.location.href);
 		if (lastEventId !== undefined) {
 			url.searchParams.append('lastEventId', String(lastEventId));
 		}

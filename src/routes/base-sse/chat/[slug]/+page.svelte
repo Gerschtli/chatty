@@ -51,8 +51,8 @@
 	});
 </script>
 
-<a href={resolve('/(app)/chat/[slug]', { slug: '1' })}>1</a>
-<a href={resolve('/(app)/chat/[slug]', { slug: '2' })}>2</a>
+<a href={resolve('/base-sse/chat/[slug]', { slug: '1' })}>1</a>
+<a href={resolve('/base-sse/chat/[slug]', { slug: '2' })}>2</a>
 
 <div class="m-4 flex items-center gap-4">
 	<a href={resolve('/')} class="btn btn-primary">Home</a>
@@ -84,4 +84,19 @@
 	{messages}
 	userId={data.userId}
 	chatName={data.chat.name}
-/>
+>
+	<!-- TODO: add optimistic UI: show message after submit before SSE is received (idea: match via client generated UUID) -->
+	<form method="post" action="?/sendMessage" use:enhance class="flex gap-4 p-4">
+		<!-- svelte-ignore a11y_autofocus -->
+		<input
+			class="input grow"
+			type="text"
+			name="content"
+			placeholder="Type a message..."
+			autocomplete="off"
+			autofocus
+			required
+		/>
+		<input class="btn btn-primary" type="submit" value="Send" />
+	</form>
+</Chat>

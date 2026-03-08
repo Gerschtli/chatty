@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { afterNavigate } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import type { Message } from './sse-events';
 
 	interface Props {
@@ -9,9 +8,10 @@
 		messages: Message[];
 		userId: string;
 		chatName: string;
+		children: Snippet;
 	}
 
-	let { connectionStatus, messages, userId, chatName }: Props = $props();
+	let { connectionStatus, messages, userId, chatName, children }: Props = $props();
 
 	let scrollContainer = $state<HTMLElement>();
 
@@ -80,18 +80,5 @@
 		{/each}
 	</div>
 
-	<!-- TODO: add optimistic UI: show message after submit before SSE is received (idea: match via client generated UUID) -->
-	<form method="post" action="?/sendMessage" use:enhance class="flex gap-4 p-4">
-		<!-- svelte-ignore a11y_autofocus -->
-		<input
-			class="input grow"
-			type="text"
-			name="content"
-			placeholder="Type a message..."
-			autocomplete="off"
-			autofocus
-			required
-		/>
-		<input class="btn btn-primary" type="submit" value="Send" />
-	</form>
+	{@render children()}
 </div>

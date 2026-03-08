@@ -9,7 +9,7 @@
 <ul class="list">
 	{#each data.chats as chat (chat.id)}
 		<li class="list-row flex items-center">
-			<a class="link" href={resolve(`/chat/${buildChatSlug(chat)}`)}>{chat.name}</a>
+			<a class="link" href={resolve(`/base-sse/chat/${buildChatSlug(chat)}`)}>{chat.name}</a>
 
 			{#if chat.members.length === 0}
 				<form action="?/joinChat" method="POST" use:enhance>
