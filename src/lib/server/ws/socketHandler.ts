@@ -1,8 +1,10 @@
-import { schemaClientMessage, type ClientMessage } from '$lib/ws-events';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { type ClientMessage } from '$lib/ws-events';
 import type { Peer } from '@sveltejs/kit';
 import * as devalue from 'devalue';
 import { Readable } from 'node:stream';
 import { loadEventsAfter } from '../events';
+import { getAllSocketHandlers } from './registry';
 
 type Event = {
 	id?: number;
@@ -16,6 +18,7 @@ export class SocketHandler {
 	readonly id: string;
 
 	#stream: Readable;
+	#peer: Peer | null = null;
 
 	constructor(readonly userId: string) {
 		this.id = (nextSocketHandlerId++).toString().padStart(4, '0');
@@ -26,29 +29,82 @@ export class SocketHandler {
 	}
 
 	onOpen(peer: Peer) {
+		this.#peer = peer;
 		console.log(`[ws] opened connection with peer ${peer}`);
-		// TODO: send initial message?
-		// TODO: init ping pong
 	}
 
 	async onClientMessage(peer: Peer, message: string) {
-		// TODO: how to handle validation errors?
-		const clientMessage = schemaClientMessage.parse(devalue.parse(message));
-		this.#log(`received client message of type ${clientMessage.type}:`, clientMessage);
+		try {
+			const data = devalue.parse(message);
+			this.#log(`received client message:`, data);
 
-		switch (clientMessage.type) {
-			case 'replay': {
-				await this.#handleReplay(peer, clientMessage);
-				break;
+			if (data.type === 'request') {
+				this.#handleRequest(peer, data);
+			} else {
+				this.#log('Unknown message type:', data.type);
 			}
-			case 'messageSent': {
+		} catch (e) {
+			this.#log('Error parsing message:', e);
+			this.#send(peer, {
+				type: 'event',
+				eventType: 'error',
+				data: { code: 'PARSE_ERROR', message: 'Invalid message', timestamp: Date.now() },
+			});
+		}
+	}
+
+	#handleRequest(peer: Peer, request: any) {
+		const { id, method, params } = request;
+		this.#log(`Handling request ${id}: ${method}`);
+
+		switch (method) {
+			case 'last_processed':
+				this.#send(peer, { type: 'response', id, result: { status: 'ok' } });
 				break;
-			}
-			default: {
-				const _exhaustiveCheck: never = clientMessage;
-				throw new Error(`unknown client message type: ${(clientMessage as ClientMessage).type}`);
+			case 'subscribe':
+				this.#send(peer, { type: 'response', id, result: { status: 'ok' } });
+				break;
+			case 'send_chat_message':
+				const serverId = Date.now().toString();
+				this.#send(peer, { type: 'response', id, result: { serverMessageId: serverId } });
+				// Broadcast to all connected clients
+				this.#broadcast({
+					type: 'event',
+					eventType: 'chat_message',
+					data: {
+						id: serverId,
+						chatId: params.chatId,
+						senderId: this.userId,
+						content: params.content,
+						timestamp: params.timestamp,
+					},
+				});
+				break;
+			case 'heartbeat':
+				this.#send(peer, { type: 'response', id, result: { status: 'ok' } });
+				break;
+			default:
+				this.#send(peer, {
+					type: 'response',
+					id,
+					error: { code: 'UNKNOWN_METHOD', message: `Unknown method: ${method}` },
+				});
+		}
+	}
+
+	#send(peer: Peer, message: any) {
+		peer.send(devalue.stringify(message));
+	}
+
+	#broadcast(message: any) {
+		// Broadcast to all connected peers except self
+		const handlers = getAllSocketHandlers();
+		for (const handler of handlers) {
+			if (handler !== this && handler.#peer) {
+				handler.#send(handler.#peer, message);
 			}
 		}
+		this.#log('Broadcasting:', message);
 	}
 
 	async #handleReplay(peer: Peer, message: Extract<ClientMessage, { type: 'replay' }>) {

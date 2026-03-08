@@ -1,137 +1,128 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as devalue from 'devalue';
-import { config } from './config';
-import { schemaServerMessage, type ClientMessage, type ServerMessage } from './ws-events';
 
-type ServerMessageEnvelope<T extends ServerMessage['type']> = Extract<ServerMessage, { type: T }>;
-
-type SubscribeOptions<T extends ServerMessage['type']> = {
-	eventType: T;
-	lastEventId: number | undefined;
-	handleEvent: (msg: ServerMessageEnvelope<T>) => void;
+type Request = {
+	type: 'request';
+	id: string;
+	method: string;
+	params: any;
 };
 
-// TODO: handle (re-)connection with lastEventId replay
-// TODO: handle different message types (e.g. chat messages, system messages, etc.)
-// TODO: send ping pong messages to keep the connection alive
-class WebsocketClient {
+type Response = {
+	type: 'response';
+	id: string;
+	result?: any;
+	error?: any;
+};
+
+type Event = {
+	type: 'event';
+	eventType: string;
+	data: any;
+};
+
+type ConnectionStatus = 'initializing' | 'connecting' | 'connected' | 'stale' | 'disconnected';
+
+type Message = Request | Response | Event;
+
+class WSClient {
 	#socket: WebSocket | null = null;
+	#pendingRequests: Map<
+		string,
+		{ resolve: (value: any) => void; reject: (reason: any) => void; timeout: NodeJS.Timeout }
+	> = new Map();
+	#eventListeners: Map<string, Set<(data: any) => void>> = new Map();
+	#connectionStatus: ConnectionStatus = $state('disconnected');
 
-	readonly connectionStatus = $state('initializing');
+	get connectionStatus() {
+		return this.#connectionStatus;
+	}
 
-	#events: { [T in ServerMessage['type']]?: ServerMessageEnvelope<T>[] } = {};
-	#listeners: { [T in ServerMessage['type']]?: Set<(event: ServerMessageEnvelope<T>) => void> } =
-		{};
+	connect(lastMessageId: number | undefined) {
+		if (this.#socket) return;
 
-	#lastEventId: number | undefined;
+		this.#socket = new WebSocket(`ws://${window.location.host}/base-ws/ws`);
+		this.#connectionStatus = 'connecting';
 
-	connect(lastEventId: number | undefined) {
-		this.#socket = new WebSocket(new URL(`/base-ws/ws`, window.location.href));
+		this.#socket.onopen = () => {
+			this.#connectionStatus = 'connected';
+			console.log('[ws-client] connected');
+			// Send last_processed
+			this.sendRequest('last_processed', { messageId: lastMessageId || '0' }).catch(console.error);
+		};
 
-		this.#socket.addEventListener('open', () => {
-			console.log('[ws-client] connection opened');
-			this.send({ type: 'replay', lastEventId });
-		});
+		this.#socket.onmessage = (event) => {
+			try {
+				const message: Message = devalue.parse(event.data);
+				console.log('[ws-client] received:', message);
 
-		this.#socket.addEventListener('message', (event) => {
-			// TODO: how to handle errors?
-			const serverMessage = schemaServerMessage.parse(devalue.parse(event.data));
-
-			console.log(
-				`[ws-client] received server message of type ${serverMessage.type} (id=${serverMessage.id}):`,
-				serverMessage,
-			);
-			console.log('lastEventId:', event.lastEventId);
-
-			if (serverMessage.id <= (this.#lastEventId ?? 0)) {
-				console.warn(
-					`Received server message with id ${serverMessage.id} which is not greater than lastEventId ${this.#lastEventId}. Ignoring event.`,
-					{ serverMessage },
-				);
-				return;
+				if (message.type === 'response') {
+					const pending = this.#pendingRequests.get(message.id);
+					if (pending) {
+						clearTimeout(pending.timeout);
+						this.#pendingRequests.delete(message.id);
+						if (message.error) {
+							pending.reject(message.error);
+						} else {
+							pending.resolve(message.result);
+						}
+					}
+				} else if (message.type === 'event') {
+					this.#emitEvent(message.eventType, message.data);
+				}
+			} catch (e) {
+				console.error('[ws-client] parse error:', e);
 			}
+		};
 
-			this.#lastEventId = serverMessage.id;
+		this.#socket.onclose = () => {
+			this.#connectionStatus = 'disconnected';
+			console.log('[ws-client] disconnected');
+			this.#socket = null;
+		};
 
-			// TODO: remove any
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			this.#events[serverMessage.type]!.push(serverMessage as any);
-			if (this.#events[serverMessage.type]!.length > config.client.maxStoredEventsPerType) {
-				this.#events[serverMessage.type]!.shift();
-			}
-
-			// TODO: remove any
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			for (const l of this.#listeners[serverMessage.type] || []) l(serverMessage as any);
-		});
-
-		this.#socket.addEventListener('close', () => {
-			console.log('[ws-client] connection closed');
-		});
-
-		this.#socket.addEventListener('error', (error) => {
+		this.#socket.onerror = (error) => {
 			console.error('[ws-client] error:', error);
-		});
-	}
-
-	send(message: ClientMessage) {
-		if (!this.#socket || this.#socket.readyState !== WebSocket.OPEN) {
-			console.warn('[ws-client] cannot send message, socket is not open');
-			return;
-		}
-
-		this.#socket.send(devalue.stringify(message));
-	}
-
-	subscribe<T extends ServerMessage['type']>({
-		eventType,
-		lastEventId,
-		handleEvent,
-	}: SubscribeOptions<T>) {
-		console.log('Starting catchup with lastEventId:', lastEventId);
-
-		this.connect(lastEventId);
-
-		const replay = this.#replayAfter(eventType, lastEventId);
-
-		for (const serverMessage of replay) {
-			// console.log(`Replaying event with id ${ev.id} and payload:`, ev.payload);
-			handleEvent(serverMessage);
-		}
-
-		const unsubsribe = this.#subscribe(eventType, (serverMessage) => {
-			// console.log(`Received live event with id ${ev.id} and payload:`, ev.payload);
-			handleEvent(serverMessage);
-		});
-
-		return { unsubsribe };
-	}
-
-	#replayAfter<T extends ServerMessage['type']>(eventType: T, lastEventId: number | undefined) {
-		// console.log('Fetching events to replay after id', lastId, 'Current messages:', this.#messages);
-
-		const events = this.#events[eventType];
-		if (!events) throw new Error(`Not listening for event type ${eventType}`);
-
-		if (lastEventId === undefined) return [...events];
-
-		return events.filter((e) => e.id > lastEventId);
-	}
-
-	#subscribe<T extends ServerMessage['type']>(
-		eventType: T,
-		fn: (event: ServerMessageEnvelope<T>) => void,
-	) {
-		if (!this.#listeners[eventType]) {
-			this.#listeners[eventType] = new Set<never>();
-		}
-		this.#listeners[eventType]!.add(fn);
-
-		return () => this.#listeners[eventType]!.delete(fn);
+		};
 	}
 
 	close() {
-		this.#socket?.close();
+		if (this.#socket) {
+			this.#socket.close();
+			this.#socket = null;
+		}
+		this.#connectionStatus = 'disconnected';
+	}
+
+	sendRequest(method: string, params: any): Promise<any> {
+		return new Promise((resolve, reject) => {
+			const id = Math.random().toString(36).substr(2, 9);
+			const request: Request = { type: 'request', id, method, params };
+			this.#socket?.send(devalue.stringify(request));
+
+			const timeout = setTimeout(() => {
+				this.#pendingRequests.delete(id);
+				reject(new Error('Request timeout'));
+			}, 10000);
+
+			this.#pendingRequests.set(id, { resolve, reject, timeout });
+		});
+	}
+
+	on(eventType: string, callback: (data: any) => void) {
+		if (!this.#eventListeners.has(eventType)) {
+			this.#eventListeners.set(eventType, new Set());
+		}
+		this.#eventListeners.get(eventType)!.add(callback);
+	}
+
+	off(eventType: string, callback: (data: any) => void) {
+		this.#eventListeners.get(eventType)?.delete(callback);
+	}
+
+	#emitEvent(eventType: string, data: any) {
+		this.#eventListeners.get(eventType)?.forEach((callback) => callback(data));
 	}
 }
 
-export const wsClient = new WebsocketClient();
+export const wsClient = new WSClient();

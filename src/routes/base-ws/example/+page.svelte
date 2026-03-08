@@ -1,6 +1,7 @@
 <script lang="ts">
 	/* eslint-disable @typescript-eslint/no-explicit-any */
 	import { browser } from '$app/environment';
+	import * as devalue from 'devalue';
 	import { onDestroy, onMount } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
 
@@ -21,7 +22,7 @@
 		return new Promise((resolve, reject) => {
 			const id = generateId();
 			const request = { type: 'request', id, method, params };
-			socket?.send(JSON.stringify(request));
+			socket?.send(devalue.stringify(request));
 
 			const timeout = setTimeout(() => {
 				pendingRequests.delete(id);
@@ -33,7 +34,7 @@
 	}
 
 	function handleMessage(event: MessageEvent) {
-		const data = JSON.parse(event.data);
+		const data = devalue.parse(event.data);
 		if (data.type === 'response') {
 			const pending = pendingRequests.get(data.id);
 			if (pending) {
