@@ -16,3 +16,13 @@ export function removeSocketHandler(socketHandler: SocketHandler) {
 export function getSocketHandlers(userId: string) {
 	return socketHandlers.get(userId)?.values() ?? [];
 }
+
+export function getAllSocketHandlers() {
+	const all = [];
+	for (const userHandlers of socketHandlers.values()) {
+		for (const handler of userHandlers.values()) {
+			all.push(handler);
+		}
+	}
+	return all;
+}

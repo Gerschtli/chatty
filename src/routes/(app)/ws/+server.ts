@@ -6,9 +6,10 @@ export const socket: Socket = {
 	upgrade({ context, locals }) {
 		console.log(`[ws] upgrade request`);
 
-		if (!locals.user) redirect(302, '/login');
+		// For example, allow unauthenticated
+		const userId = locals.user?.id || 'example-user';
 
-		const socketHandler = new SocketHandler(locals.user.id);
+		const socketHandler = new SocketHandler(userId);
 		registerSocketHandler(socketHandler);
 
 		setContextSocketHandler(context, socketHandler);
