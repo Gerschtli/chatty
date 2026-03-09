@@ -1,51 +1,5 @@
 import z from 'zod';
 
-// do not use these names: "message", "error", "ping", "open"
-/** @deprecated */
-export const schemaServerMessage = z.discriminatedUnion('type', [
-	z.object({
-		type: z.literal('messageSent'),
-		id: z.int(),
-		data: z.object({
-			id: z.string(),
-			chatId: z.int(),
-			userId: z.string(),
-			user: z.object({
-				username: z.string(),
-			}),
-			content: z.string(),
-			createdAt: z.date(),
-		}),
-	}),
-	z.object({
-		type: z.literal('error'),
-		id: z.int(),
-		message: z.string(),
-	}),
-]);
-
-/** @deprecated */
-export const schemaClientMessage = z.discriminatedUnion('type', [
-	z.object({
-		type: z.literal('replay'),
-		lastEventId: z.int().optional(),
-	}),
-	z.object({
-		type: z.literal('messageSent'),
-		chatId: z.int(),
-		content: z.string(),
-	}),
-]);
-
-/** @deprecated */
-export type ServerMessage = z.infer<typeof schemaServerMessage>;
-
-/** @deprecated */
-export type ClientMessage = z.infer<typeof schemaClientMessage>;
-
-/** @deprecated */
-export type Message = Extract<ServerMessage, { type: 'messageSent' }>;
-
 const requestErrorSchema = z.object({
 	code: z.string(),
 	message: z.string(),
@@ -58,7 +12,7 @@ const operations = {
 		response: z.object({ messageId: z.string() }),
 	},
 	'chat.joinChat': {
-		request: z.object({ chatId: z.number() }),
+		request: z.object({ chatId: z.number(), name: z.string() }),
 		response: z.object({ success: z.boolean() }),
 	},
 } as const;
@@ -79,17 +33,21 @@ const events = {
 		chatId: z.int(),
 		userId: z.string(),
 	}),
+	error: z.object({
+		code: z.string(),
+		message: z.string(),
+	}),
 } as const;
 
 // Helper for result/error union
 const resultErrorUnion = (resultSchema: z.ZodTypeAny) =>
-	z.xor([
+	z.union([
 		z.object({ result: resultSchema, error: z.undefined().optional() }),
 		z.object({ result: z.undefined().optional(), error: requestErrorSchema }),
 	]);
 
 // Build requestSchema dynamically
-const requestSchema = z.xor(
+export const requestSchema = z.union(
 	(Object.keys(operations) as (keyof typeof operations)[]).map((method) =>
 		z.object({
 			type: z.literal('request'),
@@ -101,7 +59,7 @@ const requestSchema = z.xor(
 );
 
 // Build responseSchema dynamically
-const responseSchema = z.xor(
+const responseSchema = z.union(
 	(Object.keys(operations) as (keyof typeof operations)[]).map((method) =>
 		z
 			.object({
@@ -114,7 +72,7 @@ const responseSchema = z.xor(
 );
 
 // Build eventSchema dynamically
-const eventSchema = z.xor(
+const eventSchema = z.union(
 	(Object.keys(events) as (keyof typeof events)[]).map((eventType) =>
 		z.object({
 			type: z.literal('event'),
@@ -125,7 +83,7 @@ const eventSchema = z.xor(
 	),
 );
 
-export const serverMessageSchema = z.xor([responseSchema, eventSchema]);
+export const serverMessageSchema = z.union([responseSchema, eventSchema]);
 
 // Inferred types
 

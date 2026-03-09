@@ -27,7 +27,7 @@ class WSClient {
 		return this.#connectionStatus;
 	}
 
-	connect(lastMessageId: number | undefined) {
+	connect(_lastMessageId: number | undefined) {
 		if (this.#socket) return;
 
 		this.#socket = new WebSocket(`ws://${window.location.host}/base-ws/ws`);

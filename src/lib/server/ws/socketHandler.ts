@@ -1,9 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { requestSchema, type ClientMessage } from '$lib/ws-events';
+import {
+	requestSchema,
+	type Events,
+	type Operations,
+	type Request,
+	type RequestError,
+} from '$lib/ws-events';
 import type { Peer } from '@sveltejs/kit';
 import * as devalue from 'devalue';
 import { Readable } from 'node:stream';
-import { loadEventsAfter } from '../events';
 import { getAllSocketHandlers } from './registry';
 
 type Event = {
@@ -45,87 +49,90 @@ export class SocketHandler {
 			}
 		} catch (e) {
 			this.#log('Error parsing message:', e);
-			this.#send(peer, {
-				type: 'event',
-				eventType: 'error',
-				data: { code: 'PARSE_ERROR', message: 'Invalid message', timestamp: Date.now() },
-			});
+			this.#sendEvent(peer, 1, 'error', { code: 'PARSE_ERROR', message: 'Invalid message' });
 		}
 	}
 
-	#handleRequest(peer: Peer, request: any) {
-		const { id, method, params } = request;
-		this.#log(`Handling request ${id}: ${method}`);
+	#handleRequest<T extends keyof Operations>(peer: Peer, request: Request<T>) {
+		this.#log(`Handling request ${request.id}: ${request.method}`);
 
-		switch (method) {
-			case 'last_processed':
-				this.#send(peer, { type: 'response', id, result: { status: 'ok' } });
-				break;
-			case 'subscribe':
-				this.#send(peer, { type: 'response', id, result: { status: 'ok' } });
-				break;
-			case 'send_chat_message':
+		switch (request.method) {
+			case 'chat.sendMessage': {
+				const { id: requestId, method, params } = request as Request<'chat.sendMessage'>;
 				const serverId = Date.now().toString();
-				this.#send(peer, { type: 'response', id, result: { serverMessageId: serverId } });
-				// Broadcast to all connected clients
-				this.#broadcast({
-					type: 'event',
-					eventType: 'chat_message',
-					data: {
-						id: serverId,
-						chatId: params.chatId,
-						senderId: this.userId,
-						content: params.content,
-						timestamp: params.timestamp,
-					},
+				this.#sendResponseSuccess(peer, requestId, method, { messageId: serverId });
+				this.#broadcast(42, 'chat.messageSent', {
+					id: serverId,
+					chatId: params.chatId,
+					userId: this.userId,
+					user: { username: 'username' },
+					content: params.content,
+					createdAt: new Date(),
 				});
 				break;
-			case 'heartbeat':
-				this.#send(peer, { type: 'response', id, result: { status: 'ok' } });
-				break;
-			default:
-				this.#send(peer, {
-					type: 'response',
-					id,
-					error: { code: 'UNKNOWN_METHOD', message: `Unknown method: ${method}` },
+			}
+			default: {
+				this.#sendResponseError(peer, request.id, request.method, {
+					code: 'UNKNOWN_METHOD',
+					message: `Unknown method: ${request.method}`,
 				});
-		}
-	}
-
-	#send(peer: Peer, message: any) {
-		peer.send(devalue.stringify(message));
-	}
-
-	#broadcast(message: any) {
-		// Broadcast to all connected peers except self
-		const handlers = getAllSocketHandlers();
-		for (const handler of handlers) {
-			if (handler !== this && handler.#peer) {
-				handler.#send(handler.#peer, message);
+				break;
 			}
 		}
-		this.#log('Broadcasting:', message);
 	}
 
-	async #handleReplay(peer: Peer, message: Extract<ClientMessage, { type: 'replay' }>) {
-		const events = await loadEventsAfter(this.userId, message.lastEventId ?? null);
+	#sendEvent<T extends keyof Events>(peer: Peer, id: number, eventType: T, data: Events[T]) {
+		peer.send(devalue.stringify({ type: 'event', id, eventType, data }));
+	}
 
-		this.#log('sending initial events...');
-		for (const event of events) {
-			this.#log('sending previous event', event.id);
-			peer.send(this.#convertEventToPayload(event));
+	#sendResponseSuccess<T extends keyof Operations>(
+		peer: Peer,
+		requestId: number,
+		method: T,
+		result: Operations[T]['response'],
+	) {
+		peer.send(devalue.stringify({ type: 'response', requestId, method, result }));
+	}
+
+	#sendResponseError<T extends keyof Operations>(
+		peer: Peer,
+		requestId: number,
+		method: T,
+		error: RequestError,
+	) {
+		peer.send(devalue.stringify({ type: 'response', requestId, method, error }));
+	}
+
+	#broadcast<T extends keyof Events>(id: number, eventType: T, data: Events[T]) {
+		this.#log('Broadcasting:', eventType, data);
+
+		const handlers = getAllSocketHandlers();
+		for (const handler of handlers) {
+			if (handler.#peer) {
+				handler.#sendEvent(handler.#peer, id, eventType, data);
+			}
 		}
-
-		this.#log('waiting for live events...');
-		for await (const event of this.#stream) {
-			this.#log('forwarding live event', event.id);
-			peer.send(this.#convertEventToPayload(event as Event));
-		}
 	}
 
-	#convertEventToPayload(event: Event) {
-		return { type: event.type, id: event.id, data: event.data };
-	}
+	// async #handleReplay(peer: Peer, message: Extract<ClientMessage, { type: 'replay' }>) {
+	// 	const events = await loadEventsAfter(this.userId, message.lastEventId ?? null);
+
+	// 	this.#log('sending initial events...');
+	// 	for (const event of events) {
+	// 		this.#log('sending previous event', event.id);
+	// 		peer.send(this.#convertEventToPayload(event));
+	// 	}
+
+	// 	this.#log('waiting for live events...');
+	// 	for await (const event of this.#stream) {
+	// 		this.#log('forwarding live event', event.id);
+	// 		peer.send(this.#convertEventToPayload(event as Event));
+	// 	}
+	// }
+
+	// #convertEventToPayload(event: Event) {
+	// 	return { type: event.type, id: event.id, data: event.data };
+	// }
 
 	push(event: Event) {
 		this.#stream.push(event);

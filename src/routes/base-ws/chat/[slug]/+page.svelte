@@ -2,53 +2,61 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import Chat from '$lib/Chat.svelte';
-	import { wsClient } from '$lib/ws-client.svelte';
-	import type { Message } from '$lib/ws-events';
-	import { untrack } from 'svelte';
 
 	const { data } = $props();
 
-	const chatId = $derived(data.chat.id);
-	let messages = $state<Message['data'][]>([]);
+	type Message = {
+		id: string;
+		chatId: number;
+		userId: string;
+		user: {
+			username: string;
+		};
+		content: string;
+		createdAt: Date;
+	};
 
-	$effect(() => {
-		// re-run the effect when the user navigates to a different chat
-		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		chatId;
-		// console.log('Setting up WS subscription for chat with id', chatId);
+	// const chatId = $derived(data.chat.id);
+	let messages = $state<Message[]>([]);
 
-		messages = untrack(() => data.chat.messages);
+	// $effect(() => {
+	// 	// re-run the effect when the user navigates to a different chat
+	// 	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+	// 	chatId;
+	// 	// console.log('Setting up WS subscription for chat with id', chatId);
 
-		const { unsubsribe } = untrack(() =>
-			wsClient.subscribe({
-				eventType: 'messageSent',
-				lastEventId: data.lastEventId,
-				handleEvent(payload) {
-					console.log(`Handling WS data for event type messageSent:`, payload.id);
-					if (payload.data.chatId === chatId) {
-						messages.push(payload.data);
-					}
-				},
-			}),
-		);
+	// 	messages = untrack(() => data.chat.messages);
 
-		return () => unsubsribe();
-	});
+	// 	const { unsubsribe } = untrack(() =>
+	// 		wsClient.subscribe({
+	// 			eventType: 'messageSent',
+	// 			lastEventId: data.lastEventId,
+	// 			handleEvent(payload) {
+	// 				console.log(`Handling WS data for event type messageSent:`, payload.id);
+	// 				if (payload.data.chatId === chatId) {
+	// 					messages.push(payload.data);
+	// 				}
+	// 			},
+	// 		}),
+	// 	);
 
-	$effect(() => {
-		const { unsubsribe } = untrack(() =>
-			wsClient.subscribe({
-				eventType: 'error',
-				lastEventId: data.lastEventId,
-				handleEvent({ id }) {
-					console.log(`Handling WS data for event type error:`, id);
-					throw new Error('An error occurred in the WS connection');
-				},
-			}),
-		);
+	// 	return () => unsubsribe();
+	// });
 
-		return () => unsubsribe();
-	});
+	// $effect(() => {
+	// 	const { unsubsribe } = untrack(() =>
+	// 		wsClient.subscribe({
+	// 			eventType: 'error',
+	// 			lastEventId: data.lastEventId,
+	// 			handleEvent({ id }) {
+	// 				console.log(`Handling WS data for event type error:`, id);
+	// 				throw new Error('An error occurred in the WS connection');
+	// 			},
+	// 		}),
+	// 	);
+
+	// 	return () => unsubsribe();
+	// });
 </script>
 
 <a href={resolve('/base-ws/chat/[slug]', { slug: '1' })}>1</a>
@@ -79,12 +87,7 @@
 	</p>
 </div>
 
-<Chat
-	connectionStatus={wsClient.connectionStatus}
-	{messages}
-	userId={data.userId}
-	chatName={data.chat.name}
->
+<Chat connectionStatus="closed" {messages} userId={data.userId} chatName={data.chat.name}>
 	<!-- TODO: add optimistic UI: show message after submit before WS is received (idea: match via client generated UUID) -->
 	<form method="post" action="?/sendMessage" use:enhance class="flex gap-4 p-4">
 		<!-- svelte-ignore a11y_autofocus -->

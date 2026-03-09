@@ -2,9 +2,24 @@
 	import { enhance } from '$app/forms';
 	import { resolve } from '$app/paths';
 	import { buildChatSlug } from '$lib/chat';
+	import { wsClient } from '$lib/ws-client.svelte';
 
 	let { data } = $props();
+
+	async function onclick() {
+		try {
+			const response = await wsClient.sendRequest('chat.sendMessage', {
+				chatId: 1,
+				content: 'text',
+			});
+			console.log('request success', response);
+		} catch (e) {
+			console.log('request error', e);
+		}
+	}
 </script>
+
+<button class="btn" {onclick}>send</button>
 
 <ul class="list">
 	{#each data.chats as chat (chat.id)}
